@@ -204,7 +204,6 @@ jest_coverage/
 # Application specific
 uploads/
 public/uploads/
-storage/
 logs/
 
 # SSL certificates
