@@ -2,17 +2,8 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import environment from '../config/environment';
-import connection from '../config/database';
+import { userStorage } from '../storage/userStorage';
 import { 
-  usersTable, 
-  userSessionsTable, 
-  organisationTable, 
-  inviteMemberTable,
-  tenantTable,
-  chatTable 
-} from '../config/tableConfig';
-import { 
-  User, 
   LoginRequest, 
   LoginResponse, 
   GoogleLoginRequest, 
@@ -20,18 +11,12 @@ import {
   TenantRequest,
   UserStatusRequest 
 } from '../types/api';
+import type { User as DrizzleUser } from '../db/schema';
+import type { User } from '../types/api';
 import ApiError from '../utils/ApiError';
 import { 
-  createUserSession, 
-  invalidateUserSession, 
-  generateSessionToken,
-  getClientIP 
-} from '../middleware/auth';
-import { 
   recordFailedLogin, 
-  clearFailedLogins, 
-  resetUserRequests,
-  incrementUserRequests 
+  clearFailedLogins 
 } from '../middleware/rateLimiter';
 
 /**
@@ -39,6 +24,30 @@ import {
  * Handles all authentication-related operations
  */
 export class AuthService {
+  /**
+   * Convert Drizzle User to API User format
+   */
+  private static convertToApiUser(drizzleUser: DrizzleUser): User {
+    return {
+      id: drizzleUser.id,
+      username: drizzleUser.username || '',
+      email: drizzleUser.email,
+      name: drizzleUser.name || '',
+      role: drizzleUser.role || 'Admin',
+      password: drizzleUser.password || '',
+      organization_name: drizzleUser.organization_name || undefined,
+      organization_domain: drizzleUser.organization_domain || undefined,
+      organisation_id: drizzleUser.organisation_id || undefined,
+      google_id: drizzleUser.google_id || undefined,
+      verify: drizzleUser.verify || 0,
+      verification_code: drizzleUser.verification_code || '',
+      usertype: drizzleUser.usertype || undefined,
+      is_super_admin: drizzleUser.is_super_admin || false,
+      requests_made: drizzleUser.requests_made || 0,
+      createdDate: drizzleUser.createdDate || undefined,
+    };
+  }
+
   /**
    * Check password against stored hash
    */
@@ -73,10 +82,9 @@ export class AuthService {
    */
   static async getUserStatus(data: UserStatusRequest): Promise<any> {
     try {
-      const query = `SELECT * FROM ${usersTable.schemaTableName} WHERE ${usersTable.id} = $1`;
-      const result = await connection.query(query, [data.userid]);
+      const user = await userStorage.findById(data.userid);
 
-      if (result.rows.length > 0) {
+      if (user) {
         return {
           status: 'success',
           data: 'User exists'
@@ -99,17 +107,14 @@ export class AuthService {
     try {
       const { email, password } = data;
       
-      // Check user request limit
-      const userQuery = `SELECT * FROM ${usersTable.schemaTableName} WHERE ${usersTable.email} = $1`;
-      const userResult = await connection.query(userQuery, [email]);
+      // Find user by email
+      const user = await userStorage.findByEmail(email);
 
-      if (userResult.rows.length === 0) {
+      if (!user) {
         await recordFailedLogin(ip);
-        await incrementUserRequests(email);
+        await userStorage.incrementUserRequests(email);
         throw ApiError.unauthorized('Invalid credentials');
       }
-
-      const user: User = userResult.rows[0];
 
       // Check request limit
       if ((user.requests_made || 0) > 5) {
@@ -117,10 +122,10 @@ export class AuthService {
       }
 
       // Verify password
-      const isPasswordValid = await this.checkPassword(password, user.password);
+      const isPasswordValid = await this.checkPassword(password, user.password || '');
       if (!isPasswordValid) {
         await recordFailedLogin(ip);
-        await incrementUserRequests(email);
+        await userStorage.incrementUserRequests(email);
         throw ApiError.unauthorized('Invalid credentials');
       }
 
@@ -133,18 +138,26 @@ export class AuthService {
       const token = jwt.sign(user, environment.JWT_SECRET_KEY);
 
       // Create session
-      const sessionToken = await createUserSession(user.id, ip, token);
+      const sessionData = {
+        user_id: user.id,
+        session_token: this.generateSessionToken(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        ip: ip,
+        jwt_token: token
+      };
+      
+      const session = await userStorage.createSession(sessionData);
 
       // Clear failed login attempts and reset request count
       await clearFailedLogins(ip);
-      await resetUserRequests(email);
+      await userStorage.resetUserRequests(email);
 
       return {
         status: 'success',
         message: 'Login successful',
         token,
-        sessionToken,
-        user
+        sessionToken: session.session_token,
+        user: this.convertToApiUser(user)
       };
     } catch (error) {
       if (error instanceof ApiError) {
@@ -155,11 +168,18 @@ export class AuthService {
   }
 
   /**
+   * Generate session token
+   */
+  private static generateSessionToken(): string {
+    return crypto.randomBytes(32).toString('hex');
+  }
+
+  /**
    * Logout user
    */
   static async logout(sessionToken: string): Promise<any> {
     try {
-      await invalidateUserSession(sessionToken);
+      await userStorage.invalidateSession(sessionToken);
       
       return {
         status: 'success',
@@ -191,114 +211,91 @@ export class AuthService {
 
       // Handle invitation flow
       if (inviteID && inviteID !== 'false') {
-        const inviteQuery = `
-          SELECT ${inviteMemberTable.email}, ${inviteMemberTable.organisation_id} 
-          FROM ${inviteMemberTable.schemaTableName} 
-          WHERE ${inviteMemberTable.invitation_id} = $1
-        `;
+        const invite = await userStorage.findInviteById(inviteID);
         
-        const inviteResult = await connection.query(inviteQuery, [inviteID]);
-        
-        if (inviteResult.rows.length === 0) {
+        if (!invite) {
           throw ApiError.notFound('Invitation not found');
         }
 
-        const inviteData = inviteResult.rows[0];
-        if (inviteData.email !== email) {
+        if (invite.email !== email) {
           throw ApiError.forbidden('Member is different than one who is invited');
         }
 
         // Update invitation as accepted
-        const updateInviteQuery = `
-          UPDATE ${inviteMemberTable.schemaTableName}
-          SET ${inviteMemberTable.accepted} = true
-          WHERE ${inviteMemberTable.invitation_id} = $1
-        `;
-        await connection.query(updateInviteQuery, [inviteID]);
+        await userStorage.updateInviteAccepted(inviteID);
 
         // Create new user for invited member
-        const insertUserQuery = `
-          INSERT INTO ${usersTable.schemaTableName} 
-          (${usersTable.email}, ${usersTable.username}, ${usersTable.google_id}, ${usersTable.name}, 
-           ${usersTable.role}, ${usersTable.verification_code}, ${usersTable.verify}, 
-           ${usersTable.organisation_id}, ${usersTable.organization_domain})
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-          RETURNING *
-        `;
-        
-        const newUserResult = await connection.query(insertUserQuery, [
-          email, username, googleID, name, role, 'verified', 1, 
-          inviteData.organisation_id, organization_domain || "icustomer.ai"
-        ]);
+        const newUser = await userStorage.findOrCreateGoogleUser({
+          googleID,
+          username,
+          email,
+          organization_name,
+          organization_domain,
+          name,
+          role,
+          organisation_id: invite.organisation_id || undefined
+        });
 
-        const user = newUserResult.rows[0];
-        const token = jwt.sign(user, environment.JWT_SECRET_KEY);
-        const sessionToken = await createUserSession(user.id, ip, token);
+        const token = jwt.sign(newUser, environment.JWT_SECRET_KEY);
+        
+        // Create session
+        const sessionData = {
+          user_id: newUser.id,
+          session_token: this.generateSessionToken(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+          ip: ip,
+          jwt_token: token
+        };
+        
+        const session = await userStorage.createSession(sessionData);
 
         return {
           status: 'success',
           message: 'Login successful',
           token,
-          sessionToken,
-          user
+          sessionToken: session.session_token,
+          user: this.convertToApiUser(newUser)
         };
       }
 
       // Regular flow - check for existing organization
-      const orgQuery = `SELECT * FROM ${organisationTable.schemaTableName} WHERE ${organisationTable.organisation_name} = $1`;
-      const orgResult = await connection.query(orgQuery, [organization_domain]);
+      const org = await userStorage.findOrganisationByName(organization_domain || '');
+      if (org) {
+        org_id = org.organisation_id;
+      }
+
+      // Find or create Google user
+      const user = await userStorage.findOrCreateGoogleUser({
+        googleID,
+        username,
+        email,
+        organization_name,
+        organization_domain,
+        name,
+        role,
+        organisation_id: org_id || undefined
+      });
+
+      const token = jwt.sign(user, environment.JWT_SECRET_KEY);
       
-      if (orgResult.rows.length > 0) {
-        org_id = orgResult.rows[0].organisation_id;
-      }
+      // Create session
+      const sessionData = {
+        user_id: user.id,
+        session_token: this.generateSessionToken(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        ip: ip,
+        jwt_token: token
+      };
+      
+      const session = await userStorage.createSession(sessionData);
 
-      // Check if user exists
-      const userQuery = `SELECT * FROM ${usersTable.schemaTableName} WHERE ${usersTable.email} = $1`;
-      const userResult = await connection.query(userQuery, [email]);
-
-      if (userResult.rows.length > 0) {
-        const user = userResult.rows[0];
-
-        // Check Google ID
-        if (user.google_id && user.google_id !== '') {
-          if (user.google_id === googleID) {
-            const token = jwt.sign(user, environment.JWT_SECRET_KEY);
-            const sessionToken = await createUserSession(user.id, ip, token);
-            
-            return {
-              status: 'success',
-              message: 'Login successful',
-              token,
-              sessionToken,
-              user
-            };
-          } else {
-            throw ApiError.unauthorized('Invalid Email');
-          }
-        } else {
-          // Update Google ID for existing user
-          const updateQuery = `
-            UPDATE ${usersTable.schemaTableName} 
-            SET ${usersTable.google_id} = $1 
-            WHERE ${usersTable.email} = $2 
-            RETURNING *
-          `;
-          await connection.query(updateQuery, [googleID, email]);
-
-          const token = jwt.sign(user, environment.JWT_SECRET_KEY);
-          const sessionToken = await createUserSession(user.id, ip, token);
-          
-          return {
-            status: 'success',
-            message: 'Login successful',
-            token,
-            sessionToken,
-            user
-          };
-        }
-      } else {
-        throw ApiError.unauthorized('Account not found please contact your organization admin');
-      }
+      return {
+        status: 'success',
+        message: 'Login successful',
+        token,
+        sessionToken: session.session_token,
+        user: this.convertToApiUser(user)
+      };
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -313,15 +310,11 @@ export class AuthService {
    */
   static async persistSession(ip: string): Promise<any> {
     try {
-      const checkQuery = `
-        SELECT * FROM ${userSessionsTable.schemaTableName}
-        WHERE ${userSessionsTable.ip} = $1
-        AND ${userSessionsTable.is_valid} = true
-      `;
+      console.log('calling from ORM')
+      const sessions = await userStorage.findSessionsByIP(ip);
 
-      const results = await connection.query(checkQuery, [ip]);
 
-      if (results.rows.length === 0) {
+      if (sessions.length === 0) {
         return {
           statusCode: 201,
           message: "No Active User right now"
@@ -330,25 +323,20 @@ export class AuthService {
 
       // Filter results by expiration time
       const currentTime = Date.now();
-      const filteredResults = results.rows.filter(row => currentTime < new Date(row.expires_at).getTime());
+      const validSessions = sessions.filter(session => 
+        currentTime < new Date(session.expires_at).getTime()
+      );
 
-      if (filteredResults.length === 1) {
+      if (validSessions.length === 1) {
         return {
           statusCode: 200,
           message: "Found one active user",
-          jwt_token: filteredResults[0].jwt_token,
-          session_token: filteredResults[0].session_token
+          jwt_token: validSessions[0].jwt_token,
+          session_token: validSessions[0].session_token
         };
       } else {
         // Remove stale sessions
-        const removeStaleSessionsQuery = `
-          UPDATE ${userSessionsTable.schemaTableName}
-          SET ${userSessionsTable.is_valid} = false
-          WHERE ${userSessionsTable.ip} = $1
-          AND ${userSessionsTable.is_valid} = true 
-        `;
-
-        await connection.query(removeStaleSessionsQuery, [ip]);
+        await userStorage.invalidateAllSessionsByIP(ip);
 
         return {
           statusCode: 201,

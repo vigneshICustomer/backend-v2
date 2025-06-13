@@ -107,83 +107,65 @@ export const getUserIntegrations = catchAsync(async (req: AuthenticatedRequest, 
  * Preview segment based on conditions
  * POST /segment/segment-filter-criteria
  */
-export const getSegmentFilterCriteria = async (req: Request, res: Response) => {
+export const getSegmentFilterCriteria = catchAsync(async (req: Request, res: Response) => {
     const { payload: sqlQuery, table_slug, organisation, page = 1, limit = 20 } = req.body;
+    
     if(!sqlQuery ){
-        return res.status(400).json({error: "Payload is required"});
+        throw ApiError.badRequest("Payload is required");
     }
     if(!isValidSelectQuery(sqlQuery)){
-        return res.status(400).json({error: "Invalid SQL Query format."});
+        throw ApiError.badRequest("Invalid SQL Query format.");
     }
 
-    try {   
-        // Modify the query to include pagination
-        const offset = (page - 1) * limit;
-        // const paginatedQuery = `${sqlQuery.replace(';', '')} LIMIT ${limit} OFFSET ${offset};`;
-        // const countQuery = `SELECT COUNT(*) FROM (${sqlQuery.replace(';', '')}) as total;`;
+    // Modify the query to include pagination
+    const offset = (page - 1) * limit;
 
-        // // Execute both queries in parallel
-        // const [results, countResult] = await Promise.all([
-        //     connection.query(paginatedQuery),
-        //     connection.query(countQuery)
-        // ]);
+    const combinedQuery = `
+        WITH filtered_data AS (
+            ${sqlQuery.replace(';', '')}
+        )
+        SELECT 
+            (SELECT COUNT(*) FROM filtered_data) AS total_count,
+            * 
+        FROM filtered_data
+        LIMIT ${limit} OFFSET ${offset};
+    `;
+    
+    // TAG: Customer Data Query
+    const result = await connection.query(combinedQuery);
+    const isResultEmpty = result.rows.length === 0;
 
-        // const totalCount = parseInt(countResult.rows[0].count);
-
-        const combinedQuery = `
-            WITH filtered_data AS (
-                ${sqlQuery.replace(';', '')}
-            )
-            SELECT 
-                (SELECT COUNT(*) FROM filtered_data) AS total_count,
-                * 
-            FROM filtered_data
-            LIMIT ${limit} OFFSET ${offset};
-        `;
-        // TAG: Customer Data Query
-        const result = await connection.query(combinedQuery);
-        let isResultEmpty = false
-       
-            // This is PostgreSQL result
-            isResultEmpty = result.rows.length === 0
-     
-
-        // Handle case where no results are found
-        if (isResultEmpty) {
-            return res.status(200).json({
-            
-                results: {
-                    rows: []
-                },
-                pagination: {
-                    total: 0,
-                    totalPages: 0,
-                    currentPage: page,
-                    hasMore: false
-                }
-                ,message : "No data exist in the database or check the query correctly."
-            });
-        }
-
-        // Safely access total_count with fallback
-        const totalCount = result.rows[0]?.total_count || 0;
-        const totalPages = Math.ceil(totalCount / limit);
-
-        res.status(200).json({ 
-            query: sqlQuery, 
-            results: result.rows,
+    // Handle case where no results are found
+    if (isResultEmpty) {
+        return res.status(200).json({
+            results: {
+                rows: []
+            },
             pagination: {
-                total: totalCount,
-                totalPages,
+                total: 0,
+                totalPages: 0,
                 currentPage: page,
-                hasMore: page < totalPages
-            }
+                hasMore: false
+            },
+            message: "No data exist in the database or check the query correctly."
         });
-    } catch (error) {
-        console.error("Error executing query:", error);
-        res.status(400).json({ error: error instanceof Error ? error.message : 'Query execution failed' });
     }
-};
+
+    // Safely access total_count with fallback
+    const totalCount = result.rows[0]?.total_count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return res.status(200).json({ 
+        query: sqlQuery, 
+        results: result.rows,
+        pagination: {
+            total: totalCount,
+            totalPages,
+            currentPage: page,
+            hasMore: page < totalPages
+        }
+    });
+});
 
 /**
  * Get segment filter count
