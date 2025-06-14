@@ -12,6 +12,7 @@ export interface ApiResponse<T = any> {
 export interface AuthenticatedRequest extends Request {
   user?: User;
   apiKey?: string;
+  tenantId?: string;
 }
 
 // User interface

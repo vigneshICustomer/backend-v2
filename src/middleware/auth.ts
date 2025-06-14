@@ -206,3 +206,24 @@ export const getClientIP = (req: Request): string => {
     defaultIP
   ) as string;
 };
+
+/**
+ * Middleware to validate tenant ID from headers
+ */
+export const validateTenant = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const tenantId = req.headers['x-tenant-id'] as string;
+  
+  if (!tenantId) {
+    throw ApiError.badRequest('Tenant ID is required in x-tenant-id header');
+  }
+  
+  // If user is authenticated, check if user belongs to the tenant
+  if (req.user && req.user.organisation_id !== tenantId && !req.user.is_super_admin) {
+    throw ApiError.forbidden('Access denied for this tenant');
+  }
+  
+  // Add tenant ID to request for easy access
+  req.tenantId = tenantId;
+  
+  next();
+});

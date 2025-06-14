@@ -22,6 +22,8 @@ import { generalRateLimit } from './middleware/rateLimiter';
 import authRoutes from './routes/auth';
 import insightsRoutes from './routes/insights';
 import segmentRoutes from './routes/segments';
+import bigQueryRoutes from './routes/bigquery';
+import testConnectionsRoutes from './routes/test-connections';
 
 // Initialize Express app
 const app = express();
@@ -75,7 +77,16 @@ app.use((req, res, next) => {
 // Body parsing middleware
 app.use(express.json({ limit: '700mb' }));
 app.use(express.urlencoded({ limit: '700mb', extended: true }));
-app.use(upload.none());
+
+// Apply multer.none() to all routes except BigQuery file upload routes
+app.use((req, res, next) => {
+  // Skip multer.none() for BigQuery file upload routes
+  if (req.path.startsWith('/api/bigquery/connections') && req.method === 'POST') {
+    return next();
+  }
+  // Apply multer.none() for all other routes
+  upload.none()(req, res, next);
+});
 
 // Static files
 app.use(express.static('public'));
@@ -102,6 +113,8 @@ app.get('/favicon.ico', (req, res) => {
 app.use('/', authRoutes);
 app.use('/', insightsRoutes);
 app.use('/', segmentRoutes);
+app.use('/api/bigquery', bigQueryRoutes);
+app.use('/debug', testConnectionsRoutes);
 
 // API documentation endpoint
 app.get('/api-docs', (req, res) => {
@@ -142,6 +155,14 @@ app.get('/api-docs', (req, res) => {
         'POST /insightsRoutes/clean-normalize': 'Clean and normalize account data',
         'POST /insightsRoutes/people-clean-normalize': 'Clean and normalize people data',
         'POST /insightsRoutes/deduplicate': 'Deduplicate data',
+      },
+      bigquery_connections: {
+        'POST /api/bigquery/connections': 'Create a new BigQuery connection',
+        'POST /api/bigquery/connections/:id/validate': 'Validate a BigQuery connection',
+        'GET /api/bigquery/connections/:id/datasets': 'List datasets in a BigQuery connection',
+        'GET /api/bigquery/connections/:id/datasets/:datasetId/tables': 'List tables in a BigQuery dataset',
+        'GET /api/bigquery/connections/:id/datasets/:datasetId/tables/:tableId/schema': 'Get table schema',
+        'POST /api/bigquery/connections/:id/query': 'Execute a query against BigQuery',
       },
       health: {
         'GET /health': 'Health check endpoint',
