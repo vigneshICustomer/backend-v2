@@ -22,6 +22,7 @@ import { generalRateLimit } from './middleware/rateLimiter';
 import authRoutes from './routes/auth';
 import insightsRoutes from './routes/insights';
 import segmentRoutes from './routes/segments';
+import settingsRoutes from './routes/settings';
 
 // Initialize Express app
 const app = express();
@@ -102,6 +103,7 @@ app.get('/favicon.ico', (req, res) => {
 app.use('/', authRoutes);
 app.use('/', insightsRoutes);
 app.use('/', segmentRoutes);
+app.use('/settings', settingsRoutes);
 
 // API documentation endpoint
 app.get('/api-docs', (req, res) => {
@@ -142,6 +144,14 @@ app.get('/api-docs', (req, res) => {
         'POST /insightsRoutes/clean-normalize': 'Clean and normalize account data',
         'POST /insightsRoutes/people-clean-normalize': 'Clean and normalize people data',
         'POST /insightsRoutes/deduplicate': 'Deduplicate data',
+      },
+      user_settings: {
+        'POST /settings/getUserSetting': 'Get user settings/profile information',
+        'POST /settings/updateUser': 'Update user profile',
+        'POST /settings/inviteUser': 'Invite new user to organization',
+        'POST /settings/updateMemberInvite': 'Update member invitation status',
+        'POST /settings/getInvitedMemberData': 'Get invited member data for organization',
+        'POST /settings/updateRole': 'Update user role',
       },
       health: {
         'GET /health': 'Health check endpoint',
