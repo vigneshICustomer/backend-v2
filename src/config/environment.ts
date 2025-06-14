@@ -27,10 +27,17 @@ interface Environment {
   // CORS
   ALLOWED_ORIGINS: string[];
 
+<<<<<<< HEAD
   // AWS
   AWS_ACCESS_KEY_ID: string;
   AWS_SECRET_ACCESS_KEY: string;
   AWS_REGION: string;
+=======
+  // BigQuery
+  BIGQUERY_PROJECT_ID?: string;
+  BIGQUERY_DATASET_ID?: string;
+  BIGQUERY_KEY_FILE?: string;
+>>>>>>> 2a57aaa (Basic Audience Hub API BAselined)
 }
 
 const environment: Environment = {
@@ -76,9 +83,16 @@ const environment: Environment = {
     "http://localhost:3000",
   ],
 
+<<<<<<< HEAD
   AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || "",
   AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || "",
   AWS_REGION: process.env.AWS_REGION || "us-east-1",
+=======
+  // BigQuery configuration
+  BIGQUERY_PROJECT_ID: process.env.BIGQUERY_PROJECT_ID,
+  BIGQUERY_DATASET_ID: process.env.BIGQUERY_DATASET_ID,
+  BIGQUERY_KEY_FILE: process.env.BIGQUERY_KEY_FILE,
+>>>>>>> 2a57aaa (Basic Audience Hub API BAselined)
 };
 
 export default environment;

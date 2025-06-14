@@ -2,6 +2,7 @@
 export * from './users';
 export * from './segments';
 export * from './connections';
+export * from './audiences';
 
 // Re-export commonly used types
 export type {
@@ -32,3 +33,18 @@ export type {
   Connection,
   NewConnection,
 } from './connections';
+
+export type {
+  Object,
+  NewObject,
+  Relationship,
+  NewRelationship,
+  Audience as AudienceV2,
+  NewAudience as NewAudienceV2,
+  AudienceObject,
+  NewAudienceObject,
+  Cohort,
+  NewCohort,
+  CohortFilter,
+  CohortFilters,
+} from './audiences';

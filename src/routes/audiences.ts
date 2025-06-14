@@ -1,0 +1,66 @@
+import { Router } from 'express';
+import {
+  // Audience endpoints
+  createAudience,
+  getAudienceById,
+  getAudienceWithDetails,
+  getAudiencesByTenant,
+  updateAudience,
+  deleteAudience,
+  
+  // Cohort endpoints
+  createCohort,
+  getCohortById,
+  getCohortWithAudience,
+  getCohortsByAudience,
+  getCohortsByTenant,
+  updateCohort,
+  deleteCohort,
+  
+  // Cohort data endpoints
+  previewCohortData,
+  getCohortCounts,
+  downloadCohortData,
+  generateCohortSQL,
+  
+  // Utility endpoints
+  getAllObjects,
+  getAllRelationships,
+  healthCheck,
+} from '../controllers/audiences/audienceController';
+
+const router = Router();
+
+// Health check
+router.get('/audiences/health', healthCheck);
+
+// Audience routes
+router.post('/audiences', createAudience);
+router.get('/audiences/:id', getAudienceById);
+router.get('/audiences/:id/details', getAudienceWithDetails);
+router.get('/audiences', getAudiencesByTenant);
+router.put('/audiences/:id', updateAudience);
+router.delete('/audiences/:id', deleteAudience);
+
+// Cohort routes
+router.post('/cohorts', createCohort);
+router.get('/cohorts/:id', getCohortById);
+router.get('/cohorts/:id/details', getCohortWithAudience);
+router.get('/cohorts', getCohortsByTenant); // Can be filtered by audienceId or tenantId
+router.put('/cohorts/:id', updateCohort);
+router.delete('/cohorts/:id', deleteCohort);
+
+// Cohort data routes
+router.get('/cohorts/:id/preview', previewCohortData);
+router.get('/cohorts/:id/counts', getCohortCounts);
+router.get('/cohorts/:id/download', downloadCohortData);
+router.get('/cohorts/:id/sql', generateCohortSQL);
+
+// Alternative cohort routes by audience
+router.get('/audiences/:audienceId/cohorts', getCohortsByAudience);
+
+// Utility routes
+router.get('/objects', getAllObjects);
+router.get('/relationships', getAllRelationships);
+
+export default router;

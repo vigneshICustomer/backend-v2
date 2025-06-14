@@ -27,6 +27,7 @@ import enrichTemplateRoutes from './routes/enrichTemplate';
 import championRoutes from './routes/champion';
 import bigQueryRoutes from './routes/bigquery';
 import testConnectionsRoutes from './routes/test-connections';
+import audienceRoutes from './routes/audiences';
 
 // Initialize Express app
 const app = express();
@@ -121,6 +122,7 @@ app.use('/enrichTemplate', enrichTemplateRoutes);
 app.use('/champion', championRoutes);
 app.use('/api/bigquery', bigQueryRoutes);
 app.use('/debug', testConnectionsRoutes);
+app.use('/api', audienceRoutes);
 
 // API documentation endpoint
 app.get('/api-docs', (req, res) => {
