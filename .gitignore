@@ -189,7 +189,7 @@ jest_coverage/
 *.temp
 
 # Database files
-*.db
+
 *.sqlite
 *.sqlite3
 

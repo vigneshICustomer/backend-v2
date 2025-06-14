@@ -1,7 +1,7 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or, sql } from 'drizzle-orm';
 import { db } from '../db/connection';
-import { users, userSessions, organisations, inviteMembers } from '../db/schema';
-import type { User, NewUser, UserSession, NewUserSession, Organisation, InviteMember } from '../db/schema';
+import { users, userSessions, organisations, inviteMembers } from '../db/schema/index';
+import type { User, NewUser, UserSession, NewUserSession, Organisation, InviteMember, NewInviteMember } from '../db/schema/index';
 
 /**
  * User Storage
@@ -165,6 +165,98 @@ export const userStorage = {
     };
 
     return await this.create(newUserData);
+  },
+
+  // Invitation operations
+  async createInvitation(inviteData: NewInviteMember): Promise<InviteMember> {
+    const result = await db.insert(inviteMembers).values(inviteData).returning();
+    return result[0];
+  },
+
+  async findInviteByEmail(email: string): Promise<InviteMember | null> {
+    const result = await db.select().from(inviteMembers)
+      .where(eq(inviteMembers.email, email))
+      .limit(1);
+    return result[0] || null;
+  },
+
+  async updateInviteRole(email: string, role: string): Promise<void> {
+    await db.update(inviteMembers)
+      .set({ role })
+      .where(eq(inviteMembers.email, email));
+  },
+
+  async getInvitedMemberData(organisation_id: string): Promise<any[]> {
+    try {
+      // Replicate the exact business logic from the old backend
+      // Original SQL: FULL OUTER JOIN between invite_members and users
+      // Since Drizzle doesn't support FULL OUTER JOIN directly, we'll simulate it
+      
+      // Get all invites for this organization
+      const invites = await db.select({
+        email: inviteMembers.email,
+        role: inviteMembers.role,
+        accepted: inviteMembers.accepted,
+        final_created_date: inviteMembers.created_date
+      }).from(inviteMembers)
+      .where(eq(inviteMembers.organisation_id, organisation_id));
+
+      // Get all users in this organization
+      const usersInOrg = await db.select({
+        email: users.email,
+        role: users.role,
+        accepted: sql<boolean>`true`, // Users are always accepted
+        final_created_date: users.createdDate
+      }).from(users)
+      .where(eq(users.organisation_id, organisation_id));
+
+      // Combine the results to simulate FULL OUTER JOIN
+      const emailMap = new Map<string, any>();
+
+      // Add all invites first
+      invites.forEach(invite => {
+        emailMap.set(invite.email, {
+          email: invite.email,
+          role: invite.role,
+          accepted: invite.accepted,
+          final_created_date: invite.final_created_date
+        });
+      });
+
+      // Add or update with user data (users take precedence over invites)
+      usersInOrg.forEach(user => {
+        const existing = emailMap.get(user.email);
+        if (existing) {
+          // If user exists, update the record (user data takes precedence)
+          emailMap.set(user.email, {
+            email: user.email,
+            role: user.role, // Use user's role, not invite role
+            accepted: true, // Users are always accepted
+            final_created_date: user.final_created_date
+          });
+        } else {
+          // If user doesn't exist in invites, add them
+          emailMap.set(user.email, {
+            email: user.email,
+            role: user.role,
+            accepted: true,
+            final_created_date: user.final_created_date
+          });
+        }
+      });
+
+      // Convert map to array and sort by final_created_date DESC
+      const result = Array.from(emailMap.values()).sort((a, b) => {
+        const dateA = new Date(a.final_created_date).getTime();
+        const dateB = new Date(b.final_created_date).getTime();
+        return dateB - dateA; // DESC order
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Error in getInvitedMemberData:', error);
+      throw error;
+    }
   },
 
   // Health check
