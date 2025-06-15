@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { UserSettingsService } from '../../services/UserSettingsService';
 import { S3Service } from '../../services/S3Service';
+import { EnrichTemplateService } from '../../services/EnrichTemplateService';
 import catchAsync from '../../utils/catchAsync';
 import ApiError from '../../utils/ApiError';
 import { AuthenticatedRequest } from '../../types/api';
@@ -151,7 +152,8 @@ export const readLogo = catchAsync(async (req: Request, res: Response) => {
   const imageData = await S3Service.readLogo(organizationDomain);
   
   if (!imageData) {
-    return res.status(404).json({ error: 'Image not found.' });
+    res.status(404).json({ error: 'Image not found.' });
+    return;
   }
   
   res.status(200).json({ imageData });
@@ -175,4 +177,65 @@ export const updateOrganizations = catchAsync(async (req: AuthenticatedRequest, 
   const result = await UserSettingsService.updateOrganizations(OrganizationName, OrganizationCountry, userID);
   
   res.status(200).json(result);
+});
+
+/**
+ * Save enrich template (exact copy from setting_controller.js)
+ * POST /settings/saveEnrichTemplate
+ */
+export const saveEnrichTemplate = catchAsync(async (req: Request, res: Response) => {
+  console.log(req.body);
+  const payload = req.body;
+
+  try {
+    const result = await EnrichTemplateService.saveEnrichTemplate(payload);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error saving enrich template:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * Get enrich template data (exact copy from setting_controller.js)
+ * POST /settings/getEnrichTemplateData
+ */
+export const getEnrichTemplateData = catchAsync(async (req: Request, res: Response) => {
+  const { tenant_id } = req.body;
+
+  try {
+    const result = await EnrichTemplateService.getEnrichTemplateData(tenant_id);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error getting enrich template:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * Edit enrich template data (exact copy from setting_controller.js)
+ * POST /settings/editEnrichTemplateData
+ */
+export const editEnrichTemplateData = catchAsync(async (req: Request, res: Response) => {
+  const { id, name, owner, tenant_id, mapped_fields } = req.body;
+
+  try {
+    const result = await EnrichTemplateService.editEnrichTemplateData(id, name, owner, tenant_id, mapped_fields);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error updating enrich template:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });

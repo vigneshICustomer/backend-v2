@@ -35,7 +35,7 @@ interface Environment {
 
 const environment: Environment = {
   NODE_ENV: process.env.NODE_ENV || "development",
-  PORT: parseInt(process.env.PORT || "3003", 10),
+  PORT: parseInt(process.env.PORT || "3002", 10),
 
   // Database configuration based on environment
   DB_HOST:
