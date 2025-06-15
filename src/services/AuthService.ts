@@ -11,7 +11,7 @@ import {
   TenantRequest,
   UserStatusRequest 
 } from '../types/api';
-import type { User as DrizzleUser } from '../db/schema';
+import type { User as DrizzleUser } from '../db/schema/index';
 import type { User } from '../types/api';
 import ApiError from '../utils/ApiError';
 import { 
