@@ -8,7 +8,10 @@ import {
   updateRole,
   uploadLogo,
   readLogo,
-  updateOrganizations
+  updateOrganizations,
+  saveEnrichTemplate,
+  getEnrichTemplateData,
+  editEnrichTemplateData
 } from '../controllers/settings/settingsController';
 import { checkAuthToken } from '../middleware/auth';
 import { generalRateLimit } from '../middleware/rateLimiter';
@@ -55,5 +58,10 @@ router.post('/uploadLogo', uploadLogo);
 
 // Organization management
 router.post('/updateOrganizations', updateOrganizations);
+
+// Enrich template management
+router.post('/saveEnrichTemplate', saveEnrichTemplate);
+router.post('/getEnrichTemplateData', getEnrichTemplateData);
+router.post('/editEnrichTemplateData', editEnrichTemplateData);
 
 export default router;

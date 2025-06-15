@@ -23,6 +23,8 @@ import authRoutes from './routes/auth';
 import insightsRoutes from './routes/insights';
 import segmentRoutes from './routes/segments';
 import settingsRoutes from './routes/settings';
+import enrichTemplateRoutes from './routes/enrichTemplate';
+import championRoutes from './routes/champion';
 
 // Initialize Express app
 const app = express();
@@ -104,6 +106,8 @@ app.use('/', authRoutes);
 app.use('/', insightsRoutes);
 app.use('/', segmentRoutes);
 app.use('/settings', settingsRoutes);
+app.use('/enrichTemplate', enrichTemplateRoutes);
+app.use('/champion', championRoutes);
 
 // API documentation endpoint
 app.get('/api-docs', (req, res) => {
@@ -152,6 +156,18 @@ app.get('/api-docs', (req, res) => {
         'POST /settings/updateMemberInvite': 'Update member invitation status',
         'POST /settings/getInvitedMemberData': 'Get invited member data for organization',
         'POST /settings/updateRole': 'Update user role',
+        'POST /settings/uploadLogo': 'Upload organization logo',
+        'POST /settings/readLogo': 'Read organization logo',
+        'POST /settings/updateOrganizations': 'Update organization details',
+      },
+      enrich_templates: {
+        'POST /settings/saveEnrichTemplate': 'Save enrich template draft',
+        'POST /settings/getEnrichTemplateData': 'Get enrich template data',
+        'POST /settings/editEnrichTemplateData': 'Edit enrich template data',
+        'POST /enrichTemplate/deleteTemplate': 'Delete enrich template',
+      },
+      champion_tracking: {
+        'POST /champion/getPicklistValues': 'Get picklist values for champion tracking',
       },
       health: {
         'GET /health': 'Health check endpoint',
