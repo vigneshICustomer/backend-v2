@@ -103,6 +103,33 @@ export const audienceStorage = {
     return result[0] || null;
   },
 
+  async getObjectFields(objectId: number): Promise<any[]> {
+    const object = await this.findObjectById(objectId);
+    if (!object || !object.fields) return [];
+    
+    // Parse the fields JSON and return filterable fields
+    const fields = Array.isArray(object.fields) ? object.fields : [];
+    return fields.filter((field: any) => field.isFilterable);
+  },
+
+  async getObjectDisplayFields(objectId: number): Promise<any[]> {
+    const object = await this.findObjectById(objectId);
+    if (!object || !object.fields) return [];
+    
+    // Parse the fields JSON and return displayable fields
+    const fields = Array.isArray(object.fields) ? object.fields : [];
+    return fields.filter((field: any) => field.isDisplayable);
+  },
+
+  async updateObjectFields(id: number, fields: any[]): Promise<Object | null> {
+    const result = await db
+      .update(objects)
+      .set({ fields, updatedAt: new Date() })
+      .where(eq(objects.id, id))
+      .returning();
+    return result[0] || null;
+  },
+
   // Relationships operations
   async getAllRelationships(): Promise<Relationship[]> {
     return await db.select().from(relationships);

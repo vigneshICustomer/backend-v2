@@ -71,8 +71,12 @@ export const getAudienceWithDetails = catchAsync(async (req: Request, res: Respo
 /**
  * Get audiences by tenant
  */
-export const getAudiencesByTenant = catchAsync(async (req: Request, res: Response) => {
-  const { tenantId } = req.query;
+export const getAudiencesList = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(401, 'User not authenticated');
+  }
+
+  const { organisation_id: tenantId } = req.user;
 
   if (!tenantId) {
     throw new ApiError(400, 'tenantId is required');
@@ -357,6 +361,68 @@ export const getAllRelationships = catchAsync(async (req: Request, res: Response
     success: true,
     data: relationships,
     count: relationships.length,
+  });
+});
+
+/**
+ * Get filterable fields for an object
+ */
+export const getObjectFields = catchAsync(async (req: Request, res: Response) => {
+  const { objectId } = req.params;
+
+  if (!objectId) {
+    throw new ApiError(400, 'objectId is required');
+  }
+
+  const fields = await audienceService.getObjectFields(parseInt(objectId));
+
+  res.status(200).json({
+    success: true,
+    data: fields,
+    count: fields.length,
+  });
+});
+
+/**
+ * Get displayable fields for an object
+ */
+export const getObjectDisplayFields = catchAsync(async (req: Request, res: Response) => {
+  const { objectId } = req.params;
+
+  if (!objectId) {
+    throw new ApiError(400, 'objectId is required');
+  }
+
+  const fields = await audienceService.getObjectDisplayFields(parseInt(objectId));
+
+  res.status(200).json({
+    success: true,
+    data: fields,
+    count: fields.length,
+  });
+});
+
+/**
+ * Get distinct values for a field
+ */
+export const getFieldDistinctValues = catchAsync(async (req: Request, res: Response) => {
+  const { objectId, fieldName } = req.params;
+  const { limit = 100 } = req.query;
+
+  if (!objectId || !fieldName) {
+    throw new ApiError(400, 'objectId and fieldName are required');
+  }
+
+  const values = await audienceService.getFieldDistinctValues(
+    parseInt(objectId), 
+    fieldName, 
+    parseInt(limit as string)
+  );
+
+  res.status(200).json({
+    success: true,
+    data: values,
+    count: values.length,
   });
 });
 

@@ -4,7 +4,7 @@ import {
   createAudience,
   getAudienceById,
   getAudienceWithDetails,
-  getAudiencesByTenant,
+  getAudiencesList,
   updateAudience,
   deleteAudience,
   
@@ -27,6 +27,11 @@ import {
   getAllObjects,
   getAllRelationships,
   healthCheck,
+  
+  // Field configuration endpoints
+  getObjectFields,
+  getObjectDisplayFields,
+  getFieldDistinctValues,
 } from '../controllers/audiences/audienceController';
 
 const router = Router();
@@ -38,7 +43,7 @@ router.get('/audiences/health', healthCheck);
 router.post('/audiences', createAudience);
 router.get('/audiences/:id', getAudienceById);
 router.get('/audiences/:id/details', getAudienceWithDetails);
-router.get('/audiences', getAudiencesByTenant);
+router.get('/audiences', getAudiencesList);
 router.put('/audiences/:id', updateAudience);
 router.delete('/audiences/:id', deleteAudience);
 
@@ -62,5 +67,10 @@ router.get('/audiences/:audienceId/cohorts', getCohortsByAudience);
 // Utility routes
 router.get('/objects', getAllObjects);
 router.get('/relationships', getAllRelationships);
+
+// Field configuration routes
+router.get('/objects/:objectId/fields', getObjectFields);
+router.get('/objects/:objectId/display-fields', getObjectDisplayFields);
+router.get('/objects/:objectId/fields/:fieldName/values', getFieldDistinctValues);
 
 export default router;

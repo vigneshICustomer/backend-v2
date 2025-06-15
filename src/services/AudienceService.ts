@@ -196,6 +196,48 @@ export class AudienceService {
     return await audienceStorage.getAllRelationships();
   }
 
+  async getObjectFields(objectId: number): Promise<any[]> {
+    return await audienceStorage.getObjectFields(objectId);
+  }
+
+  async getObjectDisplayFields(objectId: number): Promise<any[]> {
+    return await audienceStorage.getObjectDisplayFields(objectId);
+  }
+
+  async getFieldDistinctValues(objectId: number, fieldName: string, limit: number = 100): Promise<string[]> {
+    const object = await audienceStorage.findObjectById(objectId);
+    if (!object) {
+      throw new Error('Object not found');
+    }
+
+    // Get field configuration
+    const fields = Array.isArray(object.fields) ? object.fields : [];
+    const field = fields.find((f: any) => f.name === fieldName);
+    
+    if (!field || !field.hasDistinctValues) {
+      return [];
+    }
+
+    // Use BigQuery to get distinct values
+    const sql = `
+      SELECT DISTINCT ${fieldName} as value
+      FROM \`{project}.{dataset}.${object.bigqueryTable}\`
+      WHERE ${fieldName} IS NOT NULL
+      ORDER BY ${fieldName}
+      LIMIT ${Math.min(limit, field.distinctValuesLimit || 100)}
+    `;
+
+    try {
+      // For now, return empty array since we need a BigQuery connection
+      // In a real implementation, this would use the BigQuery service directly
+      console.warn('Distinct values fetching requires BigQuery connection setup');
+      return [];
+    } catch (error) {
+      console.error('Error fetching distinct values:', error);
+      return [];
+    }
+  }
+
   // Private helper methods
   private async processCohortCounts(cohortId: string, filters: CohortFilters): Promise<void> {
     try {

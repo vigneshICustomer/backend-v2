@@ -28,6 +28,7 @@ import championRoutes from './routes/champion';
 import bigQueryRoutes from './routes/bigquery';
 import testConnectionsRoutes from './routes/test-connections';
 import audienceRoutes from './routes/audiences';
+import { checkAuthToken } from './middleware/auth';
 
 // Initialize Express app
 const app = express();
@@ -122,7 +123,7 @@ app.use('/enrichTemplate', enrichTemplateRoutes);
 app.use('/champion', championRoutes);
 app.use('/api/bigquery', bigQueryRoutes);
 app.use('/debug', testConnectionsRoutes);
-app.use('/api', audienceRoutes);
+app.use('/api', checkAuthToken, audienceRoutes);
 
 // API documentation endpoint
 app.get('/api-docs', (req, res) => {

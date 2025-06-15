@@ -11,6 +11,10 @@ export const objects = schema.table('objects', {
   displayName: varchar('display_name', { length: 128 }).notNull(), // e.g., 'Companies', 'Contacts'
   description: text('description'),
   bigqueryTable: varchar('bigquery_table', { length: 256 }), // BigQuery table reference
+  
+  // Field configurations for UI - stores available fields, their types, and filter options
+  fields: jsonb('fields').default('[]'), // Array of field configurations
+  
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -99,4 +103,22 @@ export interface CohortFilter {
 export interface CohortFilters {
   companyFilters: CohortFilter[];
   contactFilters: CohortFilter[];
+}
+
+// Field configuration types for objects
+export interface ObjectField {
+  name: string; // BigQuery column name
+  displayName: string; // Human-readable name
+  dataType: 'string' | 'number' | 'boolean' | 'date' | 'datetime';
+  category: 'properties' | 'engagement' | 'demographics' | 'firmographics';
+  isFilterable: boolean; // Can this field be used in filters?
+  isDisplayable: boolean; // Should this field be shown in preview/results?
+  operators: string[]; // Available operators for this field
+  hasDistinctValues?: boolean; // Should we fetch distinct values for dropdown?
+  distinctValuesLimit?: number; // Max number of distinct values to fetch
+  description?: string;
+}
+
+export interface ObjectFieldsConfig {
+  fields: ObjectField[];
 }

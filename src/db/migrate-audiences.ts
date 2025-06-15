@@ -21,6 +21,7 @@ export async function migrateAudienceTables() {
         display_name VARCHAR(128) NOT NULL,
         description TEXT,
         bigquery_table VARCHAR(256),
+        fields JSONB DEFAULT '[]',
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )
