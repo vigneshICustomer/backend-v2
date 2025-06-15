@@ -22,6 +22,11 @@ import { generalRateLimit } from './middleware/rateLimiter';
 import authRoutes from './routes/auth';
 import insightsRoutes from './routes/insights';
 import segmentRoutes from './routes/segments';
+import settingsRoutes from './routes/settings';
+import enrichTemplateRoutes from './routes/enrichTemplate';
+import championRoutes from './routes/champion';
+import bigQueryRoutes from './routes/bigquery';
+import testConnectionsRoutes from './routes/test-connections';
 
 // Initialize Express app
 const app = express();
@@ -75,7 +80,16 @@ app.use((req, res, next) => {
 // Body parsing middleware
 app.use(express.json({ limit: '700mb' }));
 app.use(express.urlencoded({ limit: '700mb', extended: true }));
-app.use(upload.none());
+
+// Apply multer.none() to all routes except BigQuery file upload routes
+app.use((req, res, next) => {
+  // Skip multer.none() for BigQuery file upload routes
+  if (req.path.startsWith('/api/bigquery/connections') && req.method === 'POST') {
+    return next();
+  }
+  // Apply multer.none() for all other routes
+  upload.none()(req, res, next);
+});
 
 // Static files
 app.use(express.static('public'));
@@ -102,6 +116,11 @@ app.get('/favicon.ico', (req, res) => {
 app.use('/', authRoutes);
 app.use('/', insightsRoutes);
 app.use('/', segmentRoutes);
+app.use('/settings', settingsRoutes);
+app.use('/enrichTemplate', enrichTemplateRoutes);
+app.use('/champion', championRoutes);
+app.use('/api/bigquery', bigQueryRoutes);
+app.use('/debug', testConnectionsRoutes);
 
 // API documentation endpoint
 app.get('/api-docs', (req, res) => {
@@ -143,6 +162,35 @@ app.get('/api-docs', (req, res) => {
         'POST /insightsRoutes/people-clean-normalize': 'Clean and normalize people data',
         'POST /insightsRoutes/deduplicate': 'Deduplicate data',
       },
+      user_settings: {
+        'POST /settings/getUserSetting': 'Get user settings/profile information',
+        'POST /settings/updateUser': 'Update user profile',
+        'POST /settings/inviteUser': 'Invite new user to organization',
+        'POST /settings/updateMemberInvite': 'Update member invitation status',
+        'POST /settings/getInvitedMemberData': 'Get invited member data for organization',
+        'POST /settings/updateRole': 'Update user role',
+        'POST /settings/uploadLogo': 'Upload organization logo',
+        'POST /settings/readLogo': 'Read organization logo',
+        'POST /settings/updateOrganizations': 'Update organization details',
+      },
+      enrich_templates: {
+        'POST /settings/saveEnrichTemplate': 'Save enrich template draft',
+        'POST /settings/getEnrichTemplateData': 'Get enrich template data',
+        'POST /settings/editEnrichTemplateData': 'Edit enrich template data',
+        'POST /enrichTemplate/deleteTemplate': 'Delete enrich template',
+      },
+      champion_tracking: {
+        'POST /champion/getPicklistValues': 'Get picklist values for champion tracking',
+      },
+      bigquery_connections: {
+        'POST /api/bigquery/connections': 'Create a new BigQuery connection',
+        'POST /api/bigquery/connections/:id/validate': 'Validate a BigQuery connection',
+        'GET /api/bigquery/connections/:id/datasets': 'List datasets in a BigQuery connection',
+        'GET /api/bigquery/connections/:id/datasets/:datasetId/tables': 'List tables in a BigQuery dataset',
+        'GET /api/bigquery/connections/:id/datasets/:datasetId/tables/:tableId/schema': 'Get table schema',
+        'POST /api/bigquery/connections/:id/query': 'Execute a query against BigQuery',
+      },
+    
       health: {
         'GET /health': 'Health check endpoint',
       },

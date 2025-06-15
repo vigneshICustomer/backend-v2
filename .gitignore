@@ -4,6 +4,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+package-lock.json
 
 # Runtime data
 pids
@@ -188,7 +189,7 @@ jest_coverage/
 *.temp
 
 # Database files
-*.db
+
 *.sqlite
 *.sqlite3
 

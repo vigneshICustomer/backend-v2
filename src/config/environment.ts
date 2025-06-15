@@ -26,11 +26,16 @@ interface Environment {
 
   // CORS
   ALLOWED_ORIGINS: string[];
+
+  // AWS
+  AWS_ACCESS_KEY_ID: string;
+  AWS_SECRET_ACCESS_KEY: string;
+  AWS_REGION: string;
 }
 
 const environment: Environment = {
   NODE_ENV: process.env.NODE_ENV || "development",
-  PORT: parseInt(process.env.PORT || "3003", 10),
+  PORT: parseInt(process.env.PORT || "3002", 10),
 
   // Database configuration based on environment
   DB_HOST:
@@ -70,6 +75,10 @@ const environment: Environment = {
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS?.split(",") || [
     "http://localhost:3000",
   ],
+
+  AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || "",
+  AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || "",
+  AWS_REGION: process.env.AWS_REGION || "us-east-1",
 };
 
 export default environment;

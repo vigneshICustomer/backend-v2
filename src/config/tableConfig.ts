@@ -254,6 +254,21 @@ export const chatV4FeedbackTable: TableConfig = {
   created_at: "created_at"
 };
 
+// BigQuery connections table
+export const connectionsTable: TableConfig = {
+  schemaTableName: `${schemaName}.connections`,
+  id: "id",
+  organisation_id: "organisation_id",
+  name: "name",
+  type: "type",
+  status: "status",
+  credentials_path: "credentials_path",
+  credentials_encrypted: "credentials_encrypted",
+  config: "config",
+  created_at: "created_at",
+  updated_at: "updated_at"
+};
+
 // Export all table configurations
 export const tableConfigs = {
   users: usersTable,
@@ -273,4 +288,5 @@ export const tableConfigs = {
   modelRelationships: modelRelationshipsTable,
   settings: settingsTable,
   insights: insightsTable,
+  connections: connectionsTable,
 };
