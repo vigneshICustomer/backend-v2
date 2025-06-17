@@ -1,10 +1,10 @@
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 
 dotenv.config();
 
 interface Environment {
   NODE_ENV: string;
-  PORT: number;
+  PORT: any;
 
   // Database
   DB_HOST: string;
@@ -42,8 +42,12 @@ interface Environment {
 
 const environment: Environment = {
   NODE_ENV: process.env.NODE_ENV || "development",
+<<<<<<< HEAD
   PORT: parseInt(process.env.PORT || "3002", 10),
 
+=======
+  PORT: process.env.PORT,
+>>>>>>> 31cb2a9 (Changes that are sufficient for Audiences (T1))
   // Database configuration based on environment
   DB_HOST:
     process.env.NODE_ENV === "production"

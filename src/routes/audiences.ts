@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { checkAuthToken, validateTenant } from '../middleware/auth';
 import {
   // Audience endpoints
   createAudience,
@@ -32,9 +33,16 @@ import {
   getObjectFields,
   getObjectDisplayFields,
   getFieldDistinctValues,
+  updateObjectFields,
+  getAudienceObjectData,
 } from '../controllers/audiences/audienceController';
 
 const router = Router();
+
+// Apply tenant validation middleware to all routes except health check
+router.use('/audiences', checkAuthToken);
+router.use('/cohorts', checkAuthToken);
+router.use('/objects', checkAuthToken);
 
 // Health check
 router.get('/audiences/health', healthCheck);
@@ -72,5 +80,9 @@ router.get('/relationships', getAllRelationships);
 router.get('/objects/:objectId/fields', getObjectFields);
 router.get('/objects/:objectId/display-fields', getObjectDisplayFields);
 router.get('/objects/:objectId/fields/:fieldName/values', getFieldDistinctValues);
+router.put('/objects/:objectId/fields', updateObjectFields);
+
+// Audience data routes
+router.get('/audiences/:id/objects/:objectId/data', getAudienceObjectData);
 
 export default router;

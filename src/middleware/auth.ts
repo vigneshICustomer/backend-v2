@@ -29,7 +29,7 @@ export const checkAuthToken = catchAsync(async (req: AuthenticatedRequest, res: 
   const sessionToken = req.headers['session-token'] as string;
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token || !sessionToken) {
+  if (!token) {
     throw ApiError.unauthorized('Missing required tokens');
   }
 
@@ -41,26 +41,30 @@ export const checkAuthToken = catchAsync(async (req: AuthenticatedRequest, res: 
     const userQuery = `SELECT * FROM ${usersTable.schemaTableName} WHERE ${usersTable.id} = $1`;
     const userResult = await connection.query(userQuery, [decoded.id]);
 
+
+
     if (userResult.rows.length === 0) {
       throw ApiError.forbidden('Invalid user');
     }
 
     const userRecord: User = userResult.rows[0];
 
+    // const sourceConnectionQuery = `SELECT * FROM dev.connections WHERE  organisation_id = '${userRecord.organisation_id}'
+
     // Validate session
-    const sessionQuery = `
-      SELECT * FROM ${userSessionsTable.schemaTableName}
-      WHERE ${userSessionsTable.user_id} = $1 
-      AND ${userSessionsTable.session_token} = $2
-      AND ${userSessionsTable.is_valid} = true
-      AND ${userSessionsTable.expires_at} > CURRENT_TIMESTAMP
-    `;
+    // const sessionQuery = `
+    //   SELECT * FROM ${userSessionsTable.schemaTableName}
+    //   WHERE ${userSessionsTable.user_id} = $1 
+    //   AND ${userSessionsTable.session_token} = $2
+    //   AND ${userSessionsTable.is_valid} = true
+    //   AND ${userSessionsTable.expires_at} > CURRENT_TIMESTAMP
+    // `;
 
-    const sessionResult = await connection.query(sessionQuery, [userRecord.id, sessionToken]);
+    // const sessionResult = await connection.query(sessionQuery, [userRecord.id, sessionToken]);
 
-    if (sessionResult.rows.length === 0) {
-      throw ApiError.unauthorized('Invalid or expired session');
-    }
+    // if (sessionResult.rows.length === 0) {
+    //   throw ApiError.unauthorized('Invalid or expired session');
+    // }
 
     // Attach user information to request
     req.user = userRecord;

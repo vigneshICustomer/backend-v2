@@ -1,3 +1,4 @@
+import { organisations } from './../../db/schema/users';
 import { Request, Response } from 'express';
 import AudienceService from '../../services/AudienceService';
 import catchAsync from '../../utils/catchAsync';
@@ -9,10 +10,16 @@ const audienceService = new AudienceService();
  * Create a new audience
  */
 export const createAudience = catchAsync(async (req: Request, res: Response) => {
-  const { name, description, tenantId, createdBy, objects } = req.body;
+  const { name, description, objects } = req.body;
+  const tenantId = req.tenantId;
+  const createdBy = req.user?.id || 'system';
 
-  if (!name || !tenantId || !createdBy) {
-    throw new ApiError(400, 'Name, tenantId, and createdBy are required');
+  if (!name) {
+    throw new ApiError(400, 'Name is required');
+  }
+
+  if (!tenantId) {
+    throw new ApiError(400, 'Tenant ID is required');
   }
 
   if (!objects || !Array.isArray(objects) || objects.length === 0) {
@@ -38,7 +45,7 @@ export const createAudience = catchAsync(async (req: Request, res: Response) => 
  * Get audience by ID
  */
 export const getAudienceById = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { organisation_id:id } : any = req.user;
 
   const audience = await audienceService.getAudienceById(id);
   if (!audience) {
@@ -72,17 +79,13 @@ export const getAudienceWithDetails = catchAsync(async (req: Request, res: Respo
  * Get audiences by tenant
  */
 export const getAudiencesList = catchAsync(async (req: Request, res: Response) => {
-  if (!req.user) {
-    throw new ApiError(401, 'User not authenticated');
-  }
-
-  const { organisation_id: tenantId } = req.user;
+  const { organisation_id:tenantId } : any = req.user;
 
   if (!tenantId) {
-    throw new ApiError(400, 'tenantId is required');
+    throw new ApiError(400, 'Tenant ID is required');
   }
 
-  const audiences = await audienceService.getAudiencesByTenant(tenantId as string);
+  const audiences = await audienceService.getAudiencesByTenant(tenantId);
 
   res.status(200).json({
     success: true,
@@ -135,14 +138,19 @@ export const createCohort = catchAsync(async (req: Request, res: Response) => {
     name, 
     description, 
     audienceId, 
-    tenantId, 
-    createdBy, 
     filters,
     peopleFilters 
   } = req.body;
 
-  if (!name || !audienceId || !tenantId || !createdBy) {
-    throw new ApiError(400, 'Name, audienceId, tenantId, and createdBy are required');
+  const tenantId = req.tenantId;
+  const createdBy = req.user?.id || 'system';
+
+  if (!name || !audienceId) {
+    throw new ApiError(400, 'Name and audienceId are required');
+  }
+
+  if (!tenantId) {
+    throw new ApiError(400, 'Tenant ID is required');
   }
 
   // Handle both old format (filters) and new format (companyFilters/contactFilters)
@@ -238,13 +246,13 @@ export const getCohortsByAudience = catchAsync(async (req: Request, res: Respons
  * Get cohorts by tenant
  */
 export const getCohortsByTenant = catchAsync(async (req: Request, res: Response) => {
-  const { tenantId } = req.query;
+  const tenantId = req.tenantId;
 
   if (!tenantId) {
-    throw new ApiError(400, 'tenantId is required');
+    throw new ApiError(400, 'Tenant ID is required');
   }
 
-  const cohorts = await audienceService.getCohortsByTenant(tenantId as string);
+  const cohorts = await audienceService.getCohortsByTenant(tenantId);
 
   res.status(200).json({
     success: true,
@@ -413,7 +421,7 @@ export const getFieldDistinctValues = catchAsync(async (req: Request, res: Respo
     throw new ApiError(400, 'objectId and fieldName are required');
   }
 
-  const values = await audienceService.getFieldDistinctValues(
+  const values = await audienceService.getFilterValuesForAudienceField(
     parseInt(objectId), 
     fieldName, 
     parseInt(limit as string)
@@ -437,6 +445,55 @@ export const generateCohortSQL = catchAsync(async (req: Request, res: Response) 
   res.status(200).json({
     success: true,
     data: { sql },
+  });
+});
+
+/**
+ * Get audience object data (preview from BigQuery)
+ */
+export const getAudienceObjectData = catchAsync(async (req: Request, res: Response) => {
+  const { id: audienceId, objectId } = req.params;
+  const { limit = 50 } = req.query;
+
+
+  if (!objectId) {
+    throw new ApiError(400, 'objectId is required');
+  }
+
+  const data = await audienceService.getAudienceObjectData(
+    audienceId, 
+    parseInt(objectId as string), 
+    parseInt(limit as string)
+  );
+
+  res.status(200).json({
+    success: true,
+    data,
+    count: data.length,
+  });
+});
+
+/**
+ * Update object field configuration
+ */
+export const updateObjectFields = catchAsync(async (req: Request, res: Response) => {
+  const { objectId } = req.params;
+  const { fields } = req.body;
+
+  if (!objectId) {
+    throw new ApiError(400, 'objectId is required');
+  }
+
+  if (!fields || !Array.isArray(fields)) {
+    throw new ApiError(400, 'fields array is required');
+  }
+
+  const updatedObject = await audienceService.updateObjectFields(parseInt(objectId), fields);
+
+  res.status(200).json({
+    success: true,
+    data: updatedObject,
+    message: 'Object fields updated successfully',
   });
 });
 

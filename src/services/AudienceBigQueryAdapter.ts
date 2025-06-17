@@ -100,6 +100,39 @@ export class AudienceBigQueryAdapter {
   }
 
   /**
+   * Fetch the distinct values of a given field
+   */
+  async getFieldDistinctValues(connectionId: string, object: any, fieldName: string): Promise<any[]> {
+    const connId = connectionId || this.defaultConnectionId;
+    if (!connId) {
+      throw new Error('No BigQuery connection ID provided. Please set a default connection or pass one explicitly.');
+    }
+     // Get field configuration
+     const fields = Array.isArray(object.fields) ? object.fields : [];
+     const field = fields.find((f: any) => f.name === fieldName);
+     
+     if (!field || !field.hasDistinctValues) {
+       return [];
+     }
+ 
+     // Use BigQuery to get distinct values
+     const sql = `
+       SELECT DISTINCT ${fieldName} as value
+       FROM \`{project}.${object.bigqueryTable}\`
+       WHERE ${fieldName} IS NOT NULL
+       ORDER BY ${fieldName}
+       ${field.distinctValuesLimit ? 'LIMIT ' + field.distinctValuesLimit : ''}
+     `;
+     
+    try {
+      return await this.bigQueryService.executeQuery(connId, sql);
+    } catch (error) {
+      console.error('BigQuery execution error:', error);
+      throw new Error(`Failed to execute cohort query: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
    * Get cohort counts (companies and contacts)
    */
   async getCohortCounts(filters: CohortFilters, connectionId?: string): Promise<{ companyCount: number; peopleCount: number }> {
@@ -152,6 +185,25 @@ export class AudienceBigQueryAdapter {
       console.error('BigQuery count query error:', error);
       throw new Error(`Failed to get cohort counts: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * Fetch the table data
+   */
+  async getObjectData(connectionId:string, object:any, limit:number) {
+    const {bigqueryTable, fields} = object
+    const allFields = fields.map((field:any) => field.name).join(',')
+    const SQL = `
+      SELECT 
+        ${allFields}
+      FROM \`{project}.${bigqueryTable}\`
+      LIMIT ${limit}
+    `;
+    const rows = await this.bigQueryService.executeQuery(connectionId, SQL)
+    console.log({rows})
+
+    return rows
+
   }
 
   /**

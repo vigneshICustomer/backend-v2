@@ -333,6 +333,9 @@ export class BigQueryService {
       
       // Decrypt credentials
       const credentials = decryptObject<BigQueryCredentials>(connectionRecord.credentialsEncrypted);
+
+      const resolvedQuery = queryString
+      .replace(/{project}/g, credentials.project_id);
       
       // Create BigQuery client
       const bigquery = new BigQuery({
@@ -348,7 +351,7 @@ export class BigQueryService {
       }
       
       const [rows] = await bigquery.query({
-        query: queryString,
+        query: resolvedQuery,
         ...options
       });
       
