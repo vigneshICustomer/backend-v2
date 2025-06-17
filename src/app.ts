@@ -49,7 +49,7 @@ app.use(helmet({
 
 // CORS configuration
 app.use(cors({
-  origin: "*",
+  origin: environment.ALLOWED_ORIGINS,
   credentials: true,
   optionsSuccessStatus: 200,
 }));
