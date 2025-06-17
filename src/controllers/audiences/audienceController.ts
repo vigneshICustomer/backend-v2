@@ -1,10 +1,12 @@
 import { organisations } from './../../db/schema/users';
 import { Request, Response } from 'express';
 import AudienceService from '../../services/AudienceService';
+import CohortService from '../../services/CohortService';
 import catchAsync from '../../utils/catchAsync';
 import ApiError from '../../utils/ApiError';
 
 const audienceService = new AudienceService();
+const cohortService = new CohortService();
 
 /**
  * Create a new audience
@@ -172,7 +174,7 @@ export const createCohort = catchAsync(async (req: Request, res: Response) => {
     contactFilters = req.body.contactFilters;
   }
 
-  const cohort = await audienceService.createCohort({
+  const cohort = await cohortService.createCohort({
     name,
     description,
     audienceId,
@@ -195,7 +197,7 @@ export const createCohort = catchAsync(async (req: Request, res: Response) => {
 export const getCohortById = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const cohort = await audienceService.getCohortById(id);
+  const cohort = await cohortService.getCohortById(id);
   if (!cohort) {
     throw new ApiError(404, 'Cohort not found');
   }
@@ -212,7 +214,7 @@ export const getCohortById = catchAsync(async (req: Request, res: Response) => {
 export const getCohortWithAudience = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const cohortDetails = await audienceService.getCohortWithAudience(id);
+  const cohortDetails = await cohortService.getCohortWithAudience(id);
   if (!cohortDetails) {
     throw new ApiError(404, 'Cohort not found');
   }
@@ -233,7 +235,7 @@ export const getCohortsByAudience = catchAsync(async (req: Request, res: Respons
     throw new ApiError(400, 'audienceId is required');
   }
 
-  const cohorts = await audienceService.getCohortsByAudience(audienceId as string);
+  const cohorts = await cohortService.getCohortsByAudience(audienceId as string);
 
   res.status(200).json({
     success: true,
@@ -252,7 +254,7 @@ export const getCohortsByTenant = catchAsync(async (req: Request, res: Response)
     throw new ApiError(400, 'Tenant ID is required');
   }
 
-  const cohorts = await audienceService.getCohortsByTenant(tenantId);
+  const cohorts = await cohortService.getCohortsByTenant(tenantId);
 
   res.status(200).json({
     success: true,
@@ -268,7 +270,7 @@ export const updateCohort = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const updates = req.body;
 
-  const cohort = await audienceService.updateCohort(id, updates);
+  const cohort = await cohortService.updateCohort(id, updates);
   if (!cohort) {
     throw new ApiError(404, 'Cohort not found');
   }
@@ -286,7 +288,7 @@ export const updateCohort = catchAsync(async (req: Request, res: Response) => {
 export const deleteCohort = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const deleted = await audienceService.deleteCohort(id);
+  const deleted = await cohortService.deleteCohort(id);
   if (!deleted) {
     throw new ApiError(404, 'Cohort not found');
   }
@@ -304,7 +306,7 @@ export const previewCohortData = catchAsync(async (req: Request, res: Response) 
   const { id } = req.params;
   const { limit = 100 } = req.query;
 
-  const data = await audienceService.previewCohortData(id, parseInt(limit as string));
+  const data = await cohortService.previewCohortData(id, parseInt(limit as string));
 
   res.status(200).json({
     success: true,
@@ -316,16 +318,16 @@ export const previewCohortData = catchAsync(async (req: Request, res: Response) 
 /**
  * Get cohort counts
  */
-export const getCohortCounts = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
+// export const getCohortCounts = catchAsync(async (req: Request, res: Response) => {
+//   const { id } = req.params;
 
-  const counts = await audienceService.getCohortCounts(id);
+//   const counts = await cohortService.getCohortCounts(id);
 
-  res.status(200).json({
-    success: true,
-    data: counts,
-  });
-});
+//   res.status(200).json({
+//     success: true,
+//     data: counts,
+//   });
+// });
 
 /**
  * Download cohort data
@@ -333,7 +335,7 @@ export const getCohortCounts = catchAsync(async (req: Request, res: Response) =>
 export const downloadCohortData = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const data = await audienceService.downloadCohortData(id);
+  const data = await cohortService.downloadCohortData(id);
 
   // Set headers for CSV download
   res.setHeader('Content-Type', 'application/json');
@@ -440,11 +442,66 @@ export const getFieldDistinctValues = catchAsync(async (req: Request, res: Respo
 export const generateCohortSQL = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const sql = await audienceService.generateCohortSQL(id);
+  const sql = await cohortService.generateCohortSQL(id);
 
   res.status(200).json({
     success: true,
     data: { sql },
+  });
+});
+
+/**
+ * Get real-time cohort counts based on filter criteria (without creating a cohort)
+ */
+export const getFilterCounts = catchAsync(async (req: Request, res: Response) => {
+  const { audienceId, companyFilters = [], contactFilters = [] } = req.body;
+
+  if (!audienceId) {
+    throw new ApiError(400, 'audienceId is required');
+  }
+
+  if (!Array.isArray(companyFilters) || !Array.isArray(contactFilters)) {
+    throw new ApiError(400, 'companyFilters and contactFilters must be arrays');
+  }
+
+  const filters = {
+    companyFilters,
+    contactFilters,
+  };
+
+  const counts = await cohortService.getFilterCounts(audienceId, filters);
+
+  res.status(200).json({
+    success: true,
+    data: counts,
+  });
+});
+
+/**
+ * Preview data based on filter criteria (without creating a cohort)
+ */
+export const previewFilterData = catchAsync(async (req: Request, res: Response) => {
+  const { audienceId, companyFilters = [], contactFilters = [], limit = 100 } = req.body;
+
+  if (!audienceId) {
+    throw new ApiError(400, 'audienceId is required');
+  }
+
+  if (!Array.isArray(companyFilters) || !Array.isArray(contactFilters)) {
+    throw new ApiError(400, 'companyFilters and contactFilters must be arrays');
+  }
+
+  const filters = {
+    companyFilters,
+    contactFilters,
+  };
+
+  const data = await cohortService.previewFilterData(audienceId, filters, parseInt(limit as string));
+
+  res.status(200).json({
+    success: true,
+    data,
+    count: data.length,
   });
 });
 

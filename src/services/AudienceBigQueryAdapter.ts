@@ -24,44 +24,81 @@ export class AudienceBigQueryAdapter {
   }
 
   /**
-   * Generate SQL query for cohort based on filters
+   * Generate SQL query for cohort based on filters and audience configuration
    */
-  generateCohortSQL(filters: CohortFilters, limit?: number): string {
+  generateCohortSQL(
+    filters: CohortFilters, 
+    audienceConfig: {
+      objects: Array<{
+        object: { bigqueryTable: string; fields: any[] };
+        alias: string;
+      }>;
+      relationships: Array<{
+        joinCondition: string;
+      }>;
+    },
+    limit?: number
+  ): string {
     const { companyFilters, contactFilters } = filters;
-    
-    // Base query with join - using placeholder project and dataset
+    const { objects, relationships } = audienceConfig;
+
+    // Build SELECT clause with fields from all objects
+    const selectFields: string[] = [];
+    const fromClauses: string[] = [];
+    const joinClauses: string[] = [];
+
+    // Process each object in the audience
+    objects.forEach((obj, index) => {
+      const { object, alias } = obj;
+      const displayFields = object.fields.filter((f: any) => f.isDisplayable);
+      
+      // Add fields to SELECT
+      displayFields.forEach((field: any) => {
+        selectFields.push(`${alias}.${field.name} as ${alias}_${field.name}`);
+      });
+
+      // Add to FROM or JOIN
+      if (index === 0) {
+        fromClauses.push(`\`{project}.${object.bigqueryTable}\` ${alias}`);
+      } else {
+        // Find relationship for this join
+        const relationship = relationships.find(r => 
+          r.joinCondition.includes(alias)
+        );
+        if (relationship) {
+          joinClauses.push(`JOIN \`{project}.${object.bigqueryTable}\` ${alias} ON ${relationship.joinCondition}`);
+        }
+      }
+    });
+
+    // Build the SQL query
     let sql = `
-      SELECT 
-        c.id as contact_id,
-        c.first_name,
-        c.last_name,
-        c.email,
-        c.job_title,
-        c.account_id,
-        a.id as account_id,
-        a.company_name,
-        a.industry,
-        a.country,
-        a.employee_count
-      FROM \`{project}.{dataset}.unified_contacts\` c
-      JOIN \`{project}.{dataset}.unified_accounts\` a 
-        ON c.account_id = a.id
+      SELECT DISTINCT
+        ${selectFields.join(',\n        ')}
+      FROM ${fromClauses.join(', ')}
     `;
+
+    // Add JOIN clauses
+    if (joinClauses.length > 0) {
+      sql += `\n      ${joinClauses.join('\n      ')}`;
+    }
 
     // Build WHERE clause
     const whereConditions: string[] = [];
 
-    // Add company filters
-    if (companyFilters.length > 0) {
-      const companyConditions = this.buildFilterConditions(companyFilters, 'a');
+    // Add company filters (assuming first object is company)
+    if (companyFilters.length > 0 && objects.length > 0) {
+      const companyAlias = objects[0].alias;
+      const companyConditions = this.buildFilterConditions(companyFilters, companyAlias, objects[0].object.fields);
       if (companyConditions) {
         whereConditions.push(`(${companyConditions})`);
       }
     }
 
-    // Add contact filters
-    if (contactFilters.length > 0) {
-      const contactConditions = this.buildFilterConditions(contactFilters, 'c');
+    // Add contact filters (assuming second object is contact)
+    if (contactFilters.length > 0 && objects.length > 1) {
+      const contactAlias = objects[1].alias;
+      const contactConditions = this.buildFilterConditions(contactFilters, contactAlias, objects[1].object.fields);
       if (contactConditions) {
         whereConditions.push(`(${contactConditions})`);
       }
@@ -69,12 +106,12 @@ export class AudienceBigQueryAdapter {
 
     // Add WHERE clause if conditions exist
     if (whereConditions.length > 0) {
-      sql += ` WHERE ${whereConditions.join(' AND ')}`;
+      sql += `\n      WHERE ${whereConditions.join(' AND ')}`;
     }
 
     // Add limit if specified
     if (limit) {
-      sql += ` LIMIT ${limit}`;
+      sql += `\n      LIMIT ${limit}`;
     }
 
     return sql;
@@ -83,8 +120,21 @@ export class AudienceBigQueryAdapter {
   /**
    * Execute cohort query and return results
    */
-  async executeCohortQuery(filters: CohortFilters, limit?: number, connectionId?: string): Promise<any[]> {
-    const sql = this.generateCohortSQL(filters, limit);
+  async executeCohortQuery(
+    filters: CohortFilters, 
+    audienceConfig: {
+      objects: Array<{
+        object: { bigqueryTable: string; fields: any[] };
+        alias: string;
+      }>;
+      relationships: Array<{
+        joinCondition: string;
+      }>;
+    },
+    limit?: number, 
+    connectionId?: string
+  ): Promise<any[]> {
+    const sql = this.generateCohortSQL(filters, audienceConfig, limit);
     const connId = connectionId || this.defaultConnectionId;
     
     if (!connId) {
@@ -132,51 +182,101 @@ export class AudienceBigQueryAdapter {
     }
   }
 
+
   /**
-   * Get cohort counts (companies and contacts)
+   * Get cohort counts with dynamic audience configuration
    */
-  async getCohortCounts(filters: CohortFilters, connectionId?: string): Promise<{ companyCount: number; peopleCount: number }> {
-    const countSQL = `
-      SELECT 
-        COUNT(DISTINCT a.id) as company_count,
-        COUNT(DISTINCT c.id) as people_count
-      FROM \`{project}.{dataset}.unified_contacts\` c
-      JOIN \`{project}.{dataset}.unified_accounts\` a 
-        ON c.account_id = a.id
-    `;
-
+  async getCohortCountsWithConfig(
+    filters: CohortFilters,
+    audienceConfig: {
+      objects: Array<{
+        object: { bigqueryTable: string; fields: any[] };
+        alias: string;
+      }>;
+      relationships: Array<{
+        joinCondition: string;
+      }>;
+    },
+    connectionId?: string
+  ): Promise<{ companyCount: number; peopleCount: number }> {
     const { companyFilters, contactFilters } = filters;
-    const whereConditions: string[] = [];
-
-    if (companyFilters.length > 0) {
-      const companyConditions = this.buildFilterConditions(companyFilters, 'a');
-      if (companyConditions) {
-        whereConditions.push(`(${companyConditions})`);
-      }
+    const { objects, relationships } = audienceConfig;
+  
+    //FIXME: 	Consider updating your Object schema to include an explicit type (Company | Contact) to remove ambiguity in future.
+    const companyObject = objects.find(o =>
+      o.object.fields.some(f => f.name === 'ic_acc_name')
+    );
+    const contactObject = objects.find(o =>
+      o.object.fields.some(f => f.name === 'ic_fname')
+    );
+  
+    if (!companyObject || !contactObject) {
+      throw new Error('Missing company or contact object configuration');
     }
-
-    if (contactFilters.length > 0) {
-      const contactConditions = this.buildFilterConditions(contactFilters, 'c');
-      if (contactConditions) {
-        whereConditions.push(`(${contactConditions})`);
-      }
-    }
-
-    let finalSQL = countSQL;
-    if (whereConditions.length > 0) {
-      finalSQL += ` WHERE ${whereConditions.join(' AND ')}`;
-    }
-
+  
+    const companyAlias = companyObject.alias;
+    const contactAlias = contactObject.alias;
+  
+    const companyTable = `\`${companyObject.object.bigqueryTable}\``;
+    const contactTable = `\`${contactObject.object.bigqueryTable}\``;
+  
+    // 👇 Filtered company CTE
+    const companyConditions = this.buildFilterConditions(
+      companyFilters,
+      companyAlias,
+      companyObject.object.fields
+    );
+    const companyFilterClause = companyConditions ? `WHERE ${companyConditions}` : '';
+  
+    const qualifiedCompanyCTE = `
+      qualified_companies AS (
+        SELECT DISTINCT ${companyAlias}.SalesForceID
+        FROM ${companyTable} ${companyAlias}
+        ${companyFilterClause}
+      )
+    `;
+  
+    // 👇 Join contact table with filtered companies and apply contact filters
+    const relationship = relationships.find(r =>
+      r.joinCondition.includes(companyAlias) && r.joinCondition.includes(contactAlias)
+    );
+    const joinClause = relationship
+      ? `INNER JOIN qualified_companies qc ON ${contactAlias}.SalesForceID = qc.SalesForceID`
+      : `INNER JOIN qualified_companies qc ON ${contactAlias}.SalesForceID = ${companyAlias}.SalesForceID`;
+  
+    const contactConditions = this.buildFilterConditions(
+      contactFilters,
+      contactAlias,
+      contactObject.object.fields
+    );
+    const contactFilterClause = contactConditions ? `WHERE ${contactConditions}` : '';
+  
+    const sql = `
+      WITH ${qualifiedCompanyCTE}
+  
+      -- Count companies
+      SELECT 
+        (SELECT COUNT(DISTINCT SalesForceID) FROM qualified_companies) AS company_count,
+  
+        -- Count contacts in those companies (with contact filters)
+        (
+          SELECT COUNT(DISTINCT ${contactAlias}.ic_cntid)
+          FROM ${contactTable} ${contactAlias}
+          ${joinClause}
+          ${contactFilterClause}
+        ) AS people_count
+    `;
+  
     const connId = connectionId || this.defaultConnectionId;
-    
+  
     if (!connId) {
       throw new Error('No BigQuery connection ID provided. Please set a default connection or pass one explicitly.');
     }
-
+  
     try {
-      const rows = await this.bigQueryService.executeQuery(connId, finalSQL);
+      const rows = await this.bigQueryService.executeQuery(connId, sql);
       const result = rows[0] || { company_count: 0, people_count: 0 };
-      
+  
       return {
         companyCount: parseInt(result.company_count) || 0,
         peopleCount: parseInt(result.people_count) || 0,
@@ -227,7 +327,7 @@ export class AudienceBigQueryAdapter {
   /**
    * Build filter conditions for a specific object (company or contact)
    */
-  private buildFilterConditions(filters: CohortFilter[], tableAlias: string): string {
+  private buildFilterConditions(filters: CohortFilter[], tableAlias: string, fields?: any[]): string {
     if (filters.length === 0) return '';
 
     const conditions: string[] = [];
@@ -236,7 +336,7 @@ export class AudienceBigQueryAdapter {
 
     for (let i = 0; i < filters.length; i++) {
       const filter = filters[i];
-      const condition = this.buildSingleFilterCondition(filter, tableAlias);
+      const condition = this.buildSingleFilterCondition(filter, tableAlias, fields);
       
       if (i === 0) {
         // First filter
@@ -270,8 +370,19 @@ export class AudienceBigQueryAdapter {
   /**
    * Build a single filter condition
    */
-  private buildSingleFilterCondition(filter: CohortFilter, tableAlias: string): string {
-    const fieldName = `${tableAlias}.${this.mapFilterFieldToBigQueryField(filter.field)}`;
+  private buildSingleFilterCondition(filter: CohortFilter, tableAlias: string, fields?: any[]): string {
+    // Use field mapping from fields array if available, otherwise use default mapping
+    let actualFieldName = filter.field;
+    if (fields && fields.length > 0) {
+      const fieldConfig = fields.find((f: any) => f.name === filter.field);
+      if (fieldConfig) {
+        actualFieldName = fieldConfig.name;
+      }
+    } else {
+      actualFieldName = this.mapFilterFieldToBigQueryField(filter.field);
+    }
+
+    const fieldName = `${tableAlias}.${actualFieldName}`;
     const { operator, value } = filter;
 
     switch (operator) {

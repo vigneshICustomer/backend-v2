@@ -20,9 +20,12 @@ import {
   
   // Cohort data endpoints
   previewCohortData,
-  getCohortCounts,
   downloadCohortData,
   generateCohortSQL,
+  
+  // Real-time filter endpoints
+  getFilterCounts,
+  previewFilterData,
   
   // Utility endpoints
   getAllObjects,
@@ -65,12 +68,16 @@ router.delete('/cohorts/:id', deleteCohort);
 
 // Cohort data routes
 router.get('/cohorts/:id/preview', previewCohortData);
-router.get('/cohorts/:id/counts', getCohortCounts);
+// router.get('/cohorts/:id/counts', getCohortCounts);
 router.get('/cohorts/:id/download', downloadCohortData);
 router.get('/cohorts/:id/sql', generateCohortSQL);
 
 // Alternative cohort routes by audience
 router.get('/audiences/:audienceId/cohorts', getCohortsByAudience);
+
+// Real-time filter endpoints
+router.post('/filters/counts', getFilterCounts);
+router.post('/filters/preview', previewFilterData);
 
 // Utility routes
 router.get('/objects', getAllObjects);
