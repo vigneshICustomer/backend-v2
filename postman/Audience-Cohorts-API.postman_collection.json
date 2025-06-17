@@ -1,0 +1,566 @@
+{
+	"info": {
+		"_postman_id": "audience-cohorts-api-v2",
+		"name": "Audience & Cohorts API - Backend V2",
+		"description": "Complete API collection for testing the migrated Audience and Cohorts functionality in backend-v2. This includes endpoints for managing audiences (BigQuery table collections), cohorts (filtered subsets), and data operations.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/audiences/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audiences",
+								"health"
+							]
+						},
+						"description": "Check the health of the audience service including storage and BigQuery connectivity"
+					}
+				}
+			]
+		},
+		{
+			"name": "Objects & Relationships",
+			"item": [
+				{
+					"name": "Get All Objects (BigQuery Tables)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/objects",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"objects"
+							]
+						},
+						"description": "Get all available BigQuery tables/datasets that can be used in audiences"
+					}
+				},
+				{
+					"name": "Get All Relationships",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/relationships",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"relationships"
+							]
+						},
+						"description": "Get all available relationships between BigQuery tables"
+					}
+				}
+			]
+		},
+		{
+			"name": "Audiences",
+			"item": [
+				{
+					"name": "Create Audience",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Sales Target Audience\",\n  \"description\": \"Companies and contacts for sales targeting\",\n  \"tenantId\": \"tenant_123\",\n  \"createdBy\": \"user_456\",\n  \"objects\": [\n    {\n      \"objectId\": 1,\n      \"alias\": \"a\"\n    },\n    {\n      \"objectId\": 2,\n      \"alias\": \"c\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/audiences",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audiences"
+							]
+						},
+						"description": "Create a new audience by selecting BigQuery tables and their aliases"
+					}
+				},
+				{
+					"name": "Get Audiences by Tenant",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/audiences?tenantId=tenant_123",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audiences"
+							],
+							"query": [
+								{
+									"key": "tenantId",
+									"value": "tenant_123"
+								}
+							]
+						},
+						"description": "Get all audiences for a specific tenant"
+					}
+				},
+				{
+					"name": "Get Audience by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/audiences/{{audienceId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audiences",
+								"{{audienceId}}"
+							]
+						},
+						"description": "Get a specific audience by ID"
+					}
+				},
+				{
+					"name": "Get Audience with Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/audiences/{{audienceId}}/details",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audiences",
+								"{{audienceId}}",
+								"details"
+							]
+						},
+						"description": "Get audience with full details including objects and relationships"
+					}
+				},
+				{
+					"name": "Update Audience",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Sales Target Audience\",\n  \"description\": \"Updated description for sales targeting\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/audiences/{{audienceId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audiences",
+								"{{audienceId}}"
+							]
+						},
+						"description": "Update an existing audience"
+					}
+				},
+				{
+					"name": "Delete Audience",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/audiences/{{audienceId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audiences",
+								"{{audienceId}}"
+							]
+						},
+						"description": "Delete an audience"
+					}
+				}
+			]
+		},
+		{
+			"name": "Cohorts",
+			"item": [
+				{
+					"name": "Create Cohort",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"US Directors Cohort\",\n  \"description\": \"Directors in US companies\",\n  \"audienceId\": \"{{audienceId}}\",\n  \"tenantId\": \"tenant_123\",\n  \"createdBy\": \"user_456\",\n  \"companyFilters\": [\n    {\n      \"id\": \"filter_1\",\n      \"category\": \"company_properties\",\n      \"field\": \"Account_country\",\n      \"operator\": \"equals\",\n      \"value\": \"USA\",\n      \"logicalOperator\": \"AND\"\n    },\n    {\n      \"id\": \"filter_2\",\n      \"category\": \"company_properties\",\n      \"field\": \"Account_size\",\n      \"operator\": \"greater_than\",\n      \"value\": 100,\n      \"logicalOperator\": \"AND\"\n    }\n  ],\n  \"contactFilters\": [\n    {\n      \"id\": \"filter_3\",\n      \"category\": \"contact_properties\",\n      \"field\": \"job_title\",\n      \"operator\": \"contains\",\n      \"value\": \"Director\",\n      \"logicalOperator\": \"AND\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts"
+							]
+						},
+						"description": "Create a new cohort with filters that will generate BigQuery SQL"
+					}
+				},
+				{
+					"name": "Create Cohort (Legacy Format)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Legacy Format Cohort\",\n  \"description\": \"Using old filter format for backward compatibility\",\n  \"audienceId\": \"{{audienceId}}\",\n  \"tenantId\": \"tenant_123\",\n  \"createdBy\": \"user_456\",\n  \"filters\": [\n    {\n      \"id\": \"filter_1\",\n      \"category\": \"company_properties\",\n      \"field\": \"Account_country\",\n      \"operator\": \"equals\",\n      \"value\": \"USA\",\n      \"logicalOperator\": \"AND\"\n    }\n  ],\n  \"peopleFilters\": [\n    {\n      \"id\": \"filter_2\",\n      \"category\": \"contact_properties\",\n      \"field\": \"job_title\",\n      \"operator\": \"contains\",\n      \"value\": \"Manager\",\n      \"logicalOperator\": \"AND\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts"
+							]
+						},
+						"description": "Create cohort using legacy filter format (for backward compatibility)"
+					}
+				},
+				{
+					"name": "Get Cohorts by Tenant",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts?tenantId=tenant_123",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts"
+							],
+							"query": [
+								{
+									"key": "tenantId",
+									"value": "tenant_123"
+								}
+							]
+						},
+						"description": "Get all cohorts for a specific tenant"
+					}
+				},
+				{
+					"name": "Get Cohorts by Audience",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts?audienceId={{audienceId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts"
+							],
+							"query": [
+								{
+									"key": "audienceId",
+									"value": "{{audienceId}}"
+								}
+							]
+						},
+						"description": "Get all cohorts for a specific audience"
+					}
+				},
+				{
+					"name": "Get Cohort by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts/{{cohortId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts",
+								"{{cohortId}}"
+							]
+						},
+						"description": "Get a specific cohort by ID"
+					}
+				},
+				{
+					"name": "Get Cohort with Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts/{{cohortId}}/details",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts",
+								"{{cohortId}}",
+								"details"
+							]
+						},
+						"description": "Get cohort with audience details"
+					}
+				},
+				{
+					"name": "Update Cohort",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Cohort Name\",\n  \"description\": \"Updated description\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts/{{cohortId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts",
+								"{{cohortId}}"
+							]
+						},
+						"description": "Update an existing cohort"
+					}
+				},
+				{
+					"name": "Delete Cohort",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts/{{cohortId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts",
+								"{{cohortId}}"
+							]
+						},
+						"description": "Delete a cohort"
+					}
+				}
+			]
+		},
+		{
+			"name": "Cohort Data Operations",
+			"item": [
+				{
+					"name": "Preview Cohort Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts/{{cohortId}}/preview?limit=50",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts",
+								"{{cohortId}}",
+								"preview"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						},
+						"description": "Preview cohort data from BigQuery (limited results)"
+					}
+				},
+				{
+					"name": "Get Cohort Counts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts/{{cohortId}}/counts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts",
+								"{{cohortId}}",
+								"counts"
+							]
+						},
+						"description": "Get cohort counts (companies and people) - cached for 24 hours"
+					}
+				},
+				{
+					"name": "Download Cohort Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts/{{cohortId}}/download",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts",
+								"{{cohortId}}",
+								"download"
+							]
+						},
+						"description": "Download full cohort data from BigQuery"
+					}
+				},
+				{
+					"name": "Generate Cohort SQL",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cohorts/{{cohortId}}/sql",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cohorts",
+								"{{cohortId}}",
+								"sql"
+							]
+						},
+						"description": "Get the generated SQL query for the cohort"
+					}
+				}
+			]
+		},
+		{
+			"name": "Alternative Routes",
+			"item": [
+				{
+					"name": "Get Cohorts by Audience (Alternative)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/audiences/{{audienceId}}/cohorts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audiences",
+								"{{audienceId}}",
+								"cohorts"
+							]
+						},
+						"description": "Alternative route to get cohorts by audience ID"
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3001",
+			"type": "string",
+			"description": "Base URL for the backend-v2 server"
+		},
+		{
+			"key": "audienceId",
+			"value": "",
+			"type": "string",
+			"description": "ID of the audience to use in requests (set this after creating an audience)"
+		},
+		{
+			"key": "cohortId",
+			"value": "",
+			"type": "string",
+			"description": "ID of the cohort to use in requests (set this after creating a cohort)"
+		}
+	]
+}

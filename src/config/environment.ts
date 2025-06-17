@@ -1,10 +1,10 @@
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 
 dotenv.config();
 
 interface Environment {
   NODE_ENV: string;
-  PORT: number;
+  PORT: any;
 
   // Database
   DB_HOST: string;
@@ -27,16 +27,27 @@ interface Environment {
   // CORS
   ALLOWED_ORIGINS: string[];
 
+<<<<<<< HEAD
   // AWS
   AWS_ACCESS_KEY_ID: string;
   AWS_SECRET_ACCESS_KEY: string;
   AWS_REGION: string;
+=======
+  // BigQuery
+  BIGQUERY_PROJECT_ID?: string;
+  BIGQUERY_DATASET_ID?: string;
+  BIGQUERY_KEY_FILE?: string;
+>>>>>>> 2a57aaa (Basic Audience Hub API BAselined)
 }
 
 const environment: Environment = {
   NODE_ENV: process.env.NODE_ENV || "development",
+<<<<<<< HEAD
   PORT: parseInt(process.env.PORT || "3002", 10),
 
+=======
+  PORT: process.env.PORT,
+>>>>>>> 31cb2a9 (Changes that are sufficient for Audiences (T1))
   // Database configuration based on environment
   DB_HOST:
     process.env.NODE_ENV === "production"
@@ -76,9 +87,16 @@ const environment: Environment = {
     "http://localhost:3000",
   ],
 
+<<<<<<< HEAD
   AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || "",
   AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || "",
   AWS_REGION: process.env.AWS_REGION || "us-east-1",
+=======
+  // BigQuery configuration
+  BIGQUERY_PROJECT_ID: process.env.BIGQUERY_PROJECT_ID,
+  BIGQUERY_DATASET_ID: process.env.BIGQUERY_DATASET_ID,
+  BIGQUERY_KEY_FILE: process.env.BIGQUERY_KEY_FILE,
+>>>>>>> 2a57aaa (Basic Audience Hub API BAselined)
 };
 
 export default environment;

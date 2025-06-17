@@ -27,6 +27,8 @@ import enrichTemplateRoutes from './routes/enrichTemplate';
 import championRoutes from './routes/champion';
 import bigQueryRoutes from './routes/bigquery';
 import testConnectionsRoutes from './routes/test-connections';
+import audienceRoutes from './routes/audiences';
+import { checkAuthToken } from './middleware/auth';
 
 // Initialize Express app
 const app = express();
@@ -121,6 +123,7 @@ app.use('/enrichTemplate', enrichTemplateRoutes);
 app.use('/champion', championRoutes);
 app.use('/api/bigquery', bigQueryRoutes);
 app.use('/debug', testConnectionsRoutes);
+app.use('/api', checkAuthToken, audienceRoutes);
 
 // API documentation endpoint
 app.get('/api-docs', (req, res) => {
@@ -218,7 +221,7 @@ const startServer = async () => {
     console.log('Database initialized successfully');
 
     // Start server
-    const PORT = environment.PORT;
+    const PORT = 3001;
     app.listen(PORT, () => {
       console.log(`🚀 V2 Backend server started on port ${PORT}`);
       console.log(`📊 Environment: ${environment.NODE_ENV}`);
