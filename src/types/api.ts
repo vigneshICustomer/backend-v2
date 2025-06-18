@@ -1,8 +1,8 @@
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 
 // Base API Response interface
 export interface ApiResponse<T = any> {
-  status: 'success' | 'error';
+  status: "success" | "error";
   message: string;
   data?: T;
   errors?: Record<string, string>;
@@ -101,35 +101,6 @@ export interface UserStatusRequest {
 export interface SessionPersistenceResponse {
   jwt_token: string;
   session_token: string;
-}
-
-// Audience types
-export interface AudienceSegment {
-  id: string;
-  audience_name: string;
-  created_by: string;
-  tenant_id: string;
-  created_at: Date;
-  data_table: string;
-  signal_info: any;
-  size: number;
-  filter_data: any;
-  signals_info: any;
-  lookalike_contribution: any;
-  updated_at: Date;
-}
-
-export interface SegmentFilterCriteria {
-  filters: any[];
-  modelId?: string;
-  tenantId: string;
-}
-
-export interface SegmentSaveData {
-  segmentName: string;
-  filterCriteria: any;
-  userId: string;
-  tenantId: string;
 }
 
 // Model types
@@ -251,7 +222,7 @@ export interface PaginationParams {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 export interface PaginatedResponse<T> {

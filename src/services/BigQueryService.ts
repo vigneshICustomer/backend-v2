@@ -1,25 +1,23 @@
-import { BigQuery, Dataset, Table } from '@google-cloud/bigquery';
-import fs from 'fs';
-import path from 'path';
-import { readJsonFile } from '../utils/fileUpload';
-import { encryptObject, decryptObject } from '../utils/encryption';
-import { connectionsStorage } from '../storage/connectionsStorage';
-import ApiError from '../utils/ApiError';
-import { 
-  analyzeAccess, 
-  checkProjectAccess, 
-  combineAccessInfo, 
-  logAccessInfo, 
+import { BigQuery } from "@google-cloud/bigquery";
+import { readJsonFile } from "../utils/fileUpload";
+import { encryptObject, decryptObject } from "../utils/encryption";
+import { connectionsStorage } from "../storage/connectionsStorage";
+import ApiError from "../utils/ApiError";
+import {
+  analyzeAccess,
+  checkProjectAccess,
+  combineAccessInfo,
+  logAccessInfo,
   formatAccessResponse,
-  CombinedAccess 
-} from '../utils/bigquery.helper';
+  CombinedAccess,
+} from "../utils/bigquery.helper";
 
 // Connection types
 export enum ConnectionStatus {
-  PENDING = 'pending',
-  CONNECTED = 'connected',
-  FAILED = 'failed',
-  DISCONNECTED = 'disconnected',
+  PENDING = "pending",
+  CONNECTED = "connected",
+  FAILED = "failed",
+  DISCONNECTED = "disconnected",
 }
 
 // Interface for BigQuery connection config
@@ -65,28 +63,30 @@ export class BigQueryService {
     try {
       // Read credentials file
       const credentials = await readJsonFile(credentialsFilePath);
-      
+
       // Validate credentials
       this.validateCredentials(credentials);
-      
+
       // Encrypt credentials for storage
       const encryptedCredentials = encryptObject(credentials);
-      
+
       // Store connection in database using Drizzle ORM
       const connection = await connectionsStorage.create({
         organisationId: tenantId,
         name,
-        type: 'bigquery',
+        type: "bigquery",
         status: ConnectionStatus.PENDING,
         credentialsPath: credentialsFilePath,
         credentialsEncrypted: encryptedCredentials,
         config: config || null,
       });
-      
+
       return connection.id.toString();
     } catch (error: any) {
-      console.error('Error creating BigQuery connection:', error);
-      throw error instanceof ApiError ? error : ApiError.internal('Failed to create BigQuery connection');
+      console.error("Error creating BigQuery connection:", error);
+      throw error instanceof ApiError
+        ? error
+        : ApiError.internal("Failed to create BigQuery connection");
     }
   }
 
@@ -99,38 +99,46 @@ export class BigQueryService {
     try {
       // Get connection from database using Drizzle ORM
       const connectionRecord = await connectionsStorage.findById(connectionId);
-      
+
       if (!connectionRecord) {
-        throw ApiError.notFound('Connection not found');
+        throw ApiError.notFound("Connection not found");
       }
-      
+
       // Decrypt credentials
-      const credentials = decryptObject<BigQueryCredentials>(connectionRecord.credentialsEncrypted);
-      
+      const credentials = decryptObject<BigQueryCredentials>(
+        connectionRecord.credentialsEncrypted
+      );
+
       // Create BigQuery client
       const bigquery = new BigQuery({
         projectId: credentials.project_id,
-        credentials
+        credentials,
       });
-      
+
       // Test connection by listing datasets
       const result = await bigquery.getDatasets();
-      console.log({result})
-      
+      console.log({ result });
+
       // Update connection status using Drizzle ORM
-      await connectionsStorage.updateStatus(connectionRecord.id, ConnectionStatus.CONNECTED);
-      
+      await connectionsStorage.updateStatus(
+        connectionRecord.id,
+        ConnectionStatus.CONNECTED
+      );
+
       return true;
     } catch (error: any) {
-      console.error('Error validating BigQuery connection:', error);
-      
+      console.error("Error validating BigQuery connection:", error);
+
       // Update connection status to failed
       try {
-        await connectionsStorage.updateStatus(connectionId, ConnectionStatus.FAILED);
+        await connectionsStorage.updateStatus(
+          connectionId,
+          ConnectionStatus.FAILED
+        );
       } catch (updateError) {
-        console.error('Error updating connection status:', updateError);
+        console.error("Error updating connection status:", updateError);
       }
-      
+
       return false;
     }
   }
@@ -144,78 +152,99 @@ export class BigQueryService {
     try {
       // Get connection from database using Drizzle ORM
       const connectionRecord = await connectionsStorage.findById(connectionId);
-      
+
       if (!connectionRecord) {
-        throw ApiError.notFound('Connection not found');
+        throw ApiError.notFound("Connection not found");
       }
-      
+
       // Check connection status
       if (connectionRecord.status !== ConnectionStatus.CONNECTED) {
-        throw ApiError.badRequest('Connection is not active');
+        throw ApiError.badRequest("Connection is not active");
       }
-      
+
       // Decrypt credentials
-      const credentials = decryptObject<BigQueryCredentials>(connectionRecord.credentialsEncrypted);
-      
+      const credentials = decryptObject<BigQueryCredentials>(
+        connectionRecord.credentialsEncrypted
+      );
+
       // Create BigQuery client
       const bigquery = new BigQuery({
         projectId: credentials.project_id,
-        credentials
+        credentials,
       });
-      
-      let dataSetAccess = new Map<string, CombinedAccess | { error: string; hasAccess: boolean }>();
-  
+
+      let dataSetAccess = new Map<
+        string,
+        CombinedAccess | { error: string; hasAccess: boolean }
+      >();
+
       // Get datasets
       const [datasets] = await bigquery.getDatasets();
-      
+
       // Get project-level access information
       const projectAccess = await checkProjectAccess(bigquery);
-      
+
       // Populate access info with enhanced checking
-      await Promise.all(datasets.map(async (dataset) => {
-        const datasetId = dataset.id || 'unknown';
-        console.log(`\n\nAnalyzing access for dataset '${datasetId}':`);
-        
-        try {
-          const [metadata] = await dataset.getMetadata();
-          const accessEntries = metadata.access || [];
-          
-          // Analyze dataset-specific access
-          const datasetAccess = analyzeAccess(accessEntries, credentials.client_email);
-          
-          // Combine with project-level access
-          const combinedAccess = combineAccessInfo(datasetAccess, projectAccess);
-          
-          // Log detailed access information
-          logAccessInfo(datasetId, combinedAccess);
-          
-          dataSetAccess.set(datasetId, combinedAccess);
-          
-        } catch (error) {
-          console.error(`Error getting metadata for dataset ${datasetId}:`, error);
-          dataSetAccess.set(datasetId, {
-            error: 'Could not retrieve access information',
-            hasAccess: false
-          });
-        }
-      }));
-      
+      await Promise.all(
+        datasets.map(async (dataset) => {
+          const datasetId = dataset.id || "unknown";
+          console.log(`\n\nAnalyzing access for dataset '${datasetId}':`);
+
+          try {
+            const [metadata] = await dataset.getMetadata();
+            const accessEntries = metadata.access || [];
+
+            // Analyze dataset-specific access
+            const datasetAccess = analyzeAccess(
+              accessEntries,
+              credentials.client_email
+            );
+
+            // Combine with project-level access
+            const combinedAccess = combineAccessInfo(
+              datasetAccess,
+              projectAccess
+            );
+
+            // Log detailed access information
+            logAccessInfo(datasetId, combinedAccess);
+
+            dataSetAccess.set(datasetId, combinedAccess);
+          } catch (error) {
+            console.error(
+              `Error getting metadata for dataset ${datasetId}:`,
+              error
+            );
+            dataSetAccess.set(datasetId, {
+              error: "Could not retrieve access information",
+              hasAccess: false,
+            });
+          }
+        })
+      );
+
       // Return enhanced dataset information
-      return datasets.map(dataset => {
-        const datasetId = dataset.id || 'unknown';
+      return datasets.map((dataset) => {
+        const datasetId = dataset.id || "unknown";
         const accessInfo = dataSetAccess.get(datasetId);
-        
+
         return {
           id: datasetId,
           name: datasetId,
           location: dataset.metadata?.location,
-          access: formatAccessResponse(accessInfo || { error: 'No access information available', hasAccess: false })
+          access: formatAccessResponse(
+            accessInfo || {
+              error: "No access information available",
+              hasAccess: false,
+            }
+          ),
         };
       });
-      
     } catch (error: any) {
-      console.error('Error listing BigQuery datasets:', error);
-      throw error instanceof ApiError ? error : ApiError.internal('Failed to list BigQuery datasets');
+      console.error("Error listing BigQuery datasets:", error);
+      throw error instanceof ApiError
+        ? error
+        : ApiError.internal("Failed to list BigQuery datasets");
     }
   }
 
@@ -229,40 +258,44 @@ export class BigQueryService {
     try {
       // Get connection from database using Drizzle ORM
       const connectionRecord = await connectionsStorage.findById(connectionId);
-      
+
       if (!connectionRecord) {
-        throw ApiError.notFound('Connection not found');
+        throw ApiError.notFound("Connection not found");
       }
-      
+
       // Check connection status
       if (connectionRecord.status !== ConnectionStatus.CONNECTED) {
-        throw ApiError.badRequest('Connection is not active');
+        throw ApiError.badRequest("Connection is not active");
       }
-      
+
       // Decrypt credentials
-      const credentials = decryptObject<BigQueryCredentials>(connectionRecord.credentialsEncrypted);
-      
+      const credentials = decryptObject<BigQueryCredentials>(
+        connectionRecord.credentialsEncrypted
+      );
+
       // Create BigQuery client
       const bigquery = new BigQuery({
         projectId: credentials.project_id,
-        credentials
+        credentials,
       });
-      
+
       // Get dataset
       const dataset = bigquery.dataset(datasetId);
-      
+
       // Get tables
       const [tables] = await dataset.getTables();
-      
+
       // Return table information
-      return tables.map(table => ({
+      return tables.map((table) => ({
         id: table.id,
         name: table.id,
-        type: table.metadata.type
+        type: table.metadata.type,
       }));
     } catch (error: any) {
-      console.error('Error listing BigQuery tables:', error);
-      throw error instanceof ApiError ? error : ApiError.internal('Failed to list BigQuery tables');
+      console.error("Error listing BigQuery tables:", error);
+      throw error instanceof ApiError
+        ? error
+        : ApiError.internal("Failed to list BigQuery tables");
     }
   }
 
@@ -273,40 +306,48 @@ export class BigQueryService {
    * @param tableId Table ID
    * @returns Table schema
    */
-  async getTableSchema(connectionId: string, datasetId: string, tableId: string): Promise<any> {
+  async getTableSchema(
+    connectionId: string,
+    datasetId: string,
+    tableId: string
+  ): Promise<any> {
     try {
       // Get connection from database using Drizzle ORM
       const connectionRecord = await connectionsStorage.findById(connectionId);
-      
+
       if (!connectionRecord) {
-        throw ApiError.notFound('Connection not found');
+        throw ApiError.notFound("Connection not found");
       }
-      
+
       // Check connection status
       if (connectionRecord.status !== ConnectionStatus.CONNECTED) {
-        throw ApiError.badRequest('Connection is not active');
+        throw ApiError.badRequest("Connection is not active");
       }
-      
+
       // Decrypt credentials
-      const credentials = decryptObject<BigQueryCredentials>(connectionRecord.credentialsEncrypted);
-      
+      const credentials = decryptObject<BigQueryCredentials>(
+        connectionRecord.credentialsEncrypted
+      );
+
       // Create BigQuery client
       const bigquery = new BigQuery({
         projectId: credentials.project_id,
-        credentials
+        credentials,
       });
-      
+
       // Get table
       const dataset = bigquery.dataset(datasetId);
       const table = dataset.table(tableId);
-      
+
       // Get table metadata
       const [metadata] = await table.getMetadata();
-            
+
       return metadata.schema;
     } catch (error: any) {
-      console.error('Error getting BigQuery table schema:', error);
-      throw error instanceof ApiError ? error : ApiError.internal('Failed to get BigQuery table schema');
+      console.error("Error getting BigQuery table schema:", error);
+      throw error instanceof ApiError
+        ? error
+        : ApiError.internal("Failed to get BigQuery table schema");
     }
   }
 
@@ -317,45 +358,53 @@ export class BigQueryService {
    * @param params Query parameters
    * @returns Query results
    */
-  async executeQuery(connectionId: string, queryString: string, params?: any[]): Promise<any> {
+  async executeQuery(
+    connectionId: string,
+    queryString: string,
+    params?: any[]
+  ): Promise<any> {
     try {
       // Get connection from database using Drizzle ORM
       const connectionRecord = await connectionsStorage.findById(connectionId);
-      
+
       if (!connectionRecord) {
-        throw ApiError.notFound('Connection not found');
+        throw ApiError.notFound("Connection not found");
       }
-      
+
       // Check connection status
       if (connectionRecord.status !== ConnectionStatus.CONNECTED) {
-        throw ApiError.badRequest('Connection is not active');
+        throw ApiError.badRequest("Connection is not active");
       }
-      
+
       // Decrypt credentials
-      const credentials = decryptObject<BigQueryCredentials>(connectionRecord.credentialsEncrypted);
-      
+      const credentials = decryptObject<BigQueryCredentials>(
+        connectionRecord.credentialsEncrypted
+      );
+
       // Create BigQuery client
       const bigquery = new BigQuery({
         projectId: credentials.project_id,
-        credentials
+        credentials,
       });
-      
+
       // Execute query
       const options: any = {};
-      
+
       if (params) {
         options.params = params;
       }
-      
+
       const [rows] = await bigquery.query({
         query: queryString,
-        ...options
+        ...options,
       });
-      
+
       return rows;
     } catch (error: any) {
-      console.error('Error executing BigQuery query:', error);
-      throw error instanceof ApiError ? error : ApiError.internal('Failed to execute BigQuery query');
+      console.error("Error executing BigQuery query:", error);
+      throw error instanceof ApiError
+        ? error
+        : ApiError.internal("Failed to execute BigQuery query");
     }
   }
 
@@ -366,27 +415,29 @@ export class BigQueryService {
   private validateCredentials(credentials: any): void {
     // Check required fields
     const requiredFields = [
-      'type',
-      'project_id',
-      'private_key_id',
-      'private_key',
-      'client_email',
-      'client_id',
-      'auth_uri',
-      'token_uri',
-      'auth_provider_x509_cert_url',
-      'client_x509_cert_url'
+      "type",
+      "project_id",
+      "private_key_id",
+      "private_key",
+      "client_email",
+      "client_id",
+      "auth_uri",
+      "token_uri",
+      "auth_provider_x509_cert_url",
+      "client_x509_cert_url",
     ];
-    
+
     for (const field of requiredFields) {
       if (!credentials[field]) {
         throw ApiError.badRequest(`Invalid credentials: missing ${field}`);
       }
     }
-    
+
     // Check credential type
-    if (credentials.type !== 'service_account') {
-      throw ApiError.badRequest('Invalid credentials: must be a service account');
+    if (credentials.type !== "service_account") {
+      throw ApiError.badRequest(
+        "Invalid credentials: must be a service account"
+      );
     }
   }
 }

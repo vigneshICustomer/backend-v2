@@ -1,7 +1,6 @@
 // Export all schemas
-export * from './users';
-export * from './segments';
-export * from './connections';
+export * from "./users";
+export * from "./connections";
 
 // Re-export commonly used types
 export type {
@@ -13,22 +12,6 @@ export type {
   NewOrganisation,
   InviteMember,
   NewInviteMember,
-} from './users';
+} from "./users";
 
-export type {
-  Segment,
-  NewSegment,
-  Folder,
-  NewFolder,
-  UserFilter,
-  NewUserFilter,
-  Audience,
-  NewAudience,
-  Integration,
-  NewIntegration,
-} from './segments';
-
-export type {
-  Connection,
-  NewConnection,
-} from './connections';
+export type { Connection, NewConnection } from "./connections";

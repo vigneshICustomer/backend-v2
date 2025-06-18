@@ -1,38 +1,30 @@
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
-import environment from '../config/environment';
-import connection from '../config/database';
-import { 
-  usersTable, 
-  userSessionsTable, 
-  organisationTable, 
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import environment from "../config/environment";
+import connection from "../config/database";
+import {
+  usersTable,
+  userSessionsTable,
+  organisationTable,
   inviteMemberTable,
-  tenantTable,
-  chatTable 
-} from '../config/tableConfig';
-import { 
-  User, 
-  LoginRequest, 
-  LoginResponse, 
-  GoogleLoginRequest, 
-  RegisterRequest,
+} from "../config/tableConfig";
+import {
+  User,
+  LoginRequest,
+  LoginResponse,
+  GoogleLoginRequest,
   TenantRequest,
-  UserStatusRequest 
-} from '../types/api';
-import ApiError from '../utils/ApiError';
-import { 
-  createUserSession, 
-  invalidateUserSession, 
-  generateSessionToken,
-  getClientIP 
-} from '../middleware/auth';
-import { 
-  recordFailedLogin, 
-  clearFailedLogins, 
+  UserStatusRequest,
+} from "../types/api";
+import ApiError from "../utils/ApiError";
+import { createUserSession, invalidateUserSession } from "../middleware/auth";
+import {
+  recordFailedLogin,
+  clearFailedLogins,
   resetUserRequests,
-  incrementUserRequests 
-} from '../middleware/rateLimiter';
+  incrementUserRequests,
+} from "../middleware/rateLimiter";
 
 /**
  * Authentication Service
@@ -42,10 +34,13 @@ export class AuthService {
   /**
    * Check password against stored hash
    */
-  private static async checkPassword(userPassword: string, storedPassword: string): Promise<boolean> {
+  private static async checkPassword(
+    userPassword: string,
+    storedPassword: string
+  ): Promise<boolean> {
     const isMatch = await bcrypt.compare(userPassword, storedPassword);
     if (isMatch) return true;
-    
+
     // Fallback for old password format (if needed)
     const isOldMatch = await bcrypt.compare("old password", storedPassword);
     return isOldMatch;
@@ -59,12 +54,12 @@ export class AuthService {
       // Implementation for getting tenant information
       // This would typically involve querying tenant-specific data
       return {
-        status: 'success',
-        message: 'Tenant information retrieved',
-        data: { tenantname: data.tenantname }
+        status: "success",
+        message: "Tenant information retrieved",
+        data: { tenantname: data.tenantname },
       };
     } catch (error) {
-      throw ApiError.internal('Failed to get tenant information');
+      throw ApiError.internal("Failed to get tenant information");
     }
   }
 
@@ -78,27 +73,30 @@ export class AuthService {
 
       if (result.rows.length > 0) {
         return {
-          status: 'success',
-          data: 'User exists'
+          status: "success",
+          data: "User exists",
         };
       } else {
         return {
-          status: 'failed',
-          message: 'User does not exist'
+          status: "failed",
+          message: "User does not exist",
         };
       }
     } catch (error) {
-      throw ApiError.internal('Error getting user status');
+      throw ApiError.internal("Error getting user status");
     }
   }
 
   /**
    * Login user with JWT
    */
-  static async loginJWT(data: LoginRequest, ip: string): Promise<LoginResponse> {
+  static async loginJWT(
+    data: LoginRequest,
+    ip: string
+  ): Promise<LoginResponse> {
     try {
       const { email, password } = data;
-      
+
       // Check user request limit
       const userQuery = `SELECT * FROM ${usersTable.schemaTableName} WHERE ${usersTable.email} = $1`;
       const userResult = await connection.query(userQuery, [email]);
@@ -106,14 +104,16 @@ export class AuthService {
       if (userResult.rows.length === 0) {
         await recordFailedLogin(ip);
         await incrementUserRequests(email);
-        throw ApiError.unauthorized('Invalid credentials');
+        throw ApiError.unauthorized("Invalid credentials");
       }
 
       const user: User = userResult.rows[0];
 
       // Check request limit
       if ((user.requests_made || 0) > 5) {
-        throw ApiError.tooManyRequests('Too Many Requests! Come again in 24 hours!');
+        throw ApiError.tooManyRequests(
+          "Too Many Requests! Come again in 24 hours!"
+        );
       }
 
       // Verify password
@@ -121,12 +121,12 @@ export class AuthService {
       if (!isPasswordValid) {
         await recordFailedLogin(ip);
         await incrementUserRequests(email);
-        throw ApiError.unauthorized('Invalid credentials');
+        throw ApiError.unauthorized("Invalid credentials");
       }
 
       // Check if user is verified
-      if (user.verify !== 1 || user.verification_code !== 'verified') {
-        throw ApiError.unauthorized('Please verify your email to Login');
+      if (user.verify !== 1 || user.verification_code !== "verified") {
+        throw ApiError.unauthorized("Please verify your email to Login");
       }
 
       // Generate JWT token
@@ -140,17 +140,17 @@ export class AuthService {
       await resetUserRequests(email);
 
       return {
-        status: 'success',
-        message: 'Login successful',
+        status: "success",
+        message: "Login successful",
         token,
         sessionToken,
-        user
+        user,
       };
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internal('An error occurred during login');
+      throw ApiError.internal("An error occurred during login");
     }
   }
 
@@ -160,52 +160,57 @@ export class AuthService {
   static async logout(sessionToken: string): Promise<any> {
     try {
       await invalidateUserSession(sessionToken);
-      
+
       return {
-        status: 'success',
-        message: 'Logged out successfully'
+        status: "success",
+        message: "Logged out successfully",
       };
     } catch (error) {
-      throw ApiError.internal('An error occurred during logout');
+      throw ApiError.internal("An error occurred during logout");
     }
   }
 
   /**
    * Google login/register
    */
-  static async googleLoginJWT(data: GoogleLoginRequest, ip: string): Promise<LoginResponse> {
+  static async googleLoginJWT(
+    data: GoogleLoginRequest,
+    ip: string
+  ): Promise<LoginResponse> {
     try {
-      const { 
-        googleID, 
-        username, 
-        email, 
-        organization_name, 
-        organization_domain, 
-        name, 
-        app = '', 
-        role = 'Admin', 
-        inviteID 
+      const {
+        googleID,
+        username,
+        email,
+        organization_name,
+        organization_domain,
+        name,
+        app = "",
+        role = "Admin",
+        inviteID,
       } = data;
 
       let org_id = null;
 
       // Handle invitation flow
-      if (inviteID && inviteID !== 'false') {
+      if (inviteID && inviteID !== "false") {
         const inviteQuery = `
           SELECT ${inviteMemberTable.email}, ${inviteMemberTable.organisation_id} 
           FROM ${inviteMemberTable.schemaTableName} 
           WHERE ${inviteMemberTable.invitation_id} = $1
         `;
-        
+
         const inviteResult = await connection.query(inviteQuery, [inviteID]);
-        
+
         if (inviteResult.rows.length === 0) {
-          throw ApiError.notFound('Invitation not found');
+          throw ApiError.notFound("Invitation not found");
         }
 
         const inviteData = inviteResult.rows[0];
         if (inviteData.email !== email) {
-          throw ApiError.forbidden('Member is different than one who is invited');
+          throw ApiError.forbidden(
+            "Member is different than one who is invited"
+          );
         }
 
         // Update invitation as accepted
@@ -225,10 +230,17 @@ export class AuthService {
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           RETURNING *
         `;
-        
+
         const newUserResult = await connection.query(insertUserQuery, [
-          email, username, googleID, name, role, 'verified', 1, 
-          inviteData.organisation_id, organization_domain || "icustomer.ai"
+          email,
+          username,
+          googleID,
+          name,
+          role,
+          "verified",
+          1,
+          inviteData.organisation_id,
+          organization_domain || "icustomer.ai",
         ]);
 
         const user = newUserResult.rows[0];
@@ -236,18 +248,18 @@ export class AuthService {
         const sessionToken = await createUserSession(user.id, ip, token);
 
         return {
-          status: 'success',
-          message: 'Login successful',
+          status: "success",
+          message: "Login successful",
           token,
           sessionToken,
-          user
+          user,
         };
       }
 
       // Regular flow - check for existing organization
       const orgQuery = `SELECT * FROM ${organisationTable.schemaTableName} WHERE ${organisationTable.organisation_name} = $1`;
       const orgResult = await connection.query(orgQuery, [organization_domain]);
-      
+
       if (orgResult.rows.length > 0) {
         org_id = orgResult.rows[0].organisation_id;
       }
@@ -260,20 +272,20 @@ export class AuthService {
         const user = userResult.rows[0];
 
         // Check Google ID
-        if (user.google_id && user.google_id !== '') {
+        if (user.google_id && user.google_id !== "") {
           if (user.google_id === googleID) {
             const token = jwt.sign(user, environment.JWT_SECRET_KEY);
             const sessionToken = await createUserSession(user.id, ip, token);
-            
+
             return {
-              status: 'success',
-              message: 'Login successful',
+              status: "success",
+              message: "Login successful",
               token,
               sessionToken,
-              user
+              user,
             };
           } else {
-            throw ApiError.unauthorized('Invalid Email');
+            throw ApiError.unauthorized("Invalid Email");
           }
         } else {
           // Update Google ID for existing user
@@ -287,26 +299,27 @@ export class AuthService {
 
           const token = jwt.sign(user, environment.JWT_SECRET_KEY);
           const sessionToken = await createUserSession(user.id, ip, token);
-          
+
           return {
-            status: 'success',
-            message: 'Login successful',
+            status: "success",
+            message: "Login successful",
             token,
             sessionToken,
-            user
+            user,
           };
         }
       } else {
-        throw ApiError.unauthorized('Account not found please contact your organization admin');
+        throw ApiError.unauthorized(
+          "Account not found please contact your organization admin"
+        );
       }
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internal('Error during Google login');
+      throw ApiError.internal("Error during Google login");
     }
   }
-
 
   /**
    * Session persistence check
@@ -324,20 +337,22 @@ export class AuthService {
       if (results.rows.length === 0) {
         return {
           statusCode: 201,
-          message: "No Active User right now"
+          message: "No Active User right now",
         };
       }
 
       // Filter results by expiration time
       const currentTime = Date.now();
-      const filteredResults = results.rows.filter(row => currentTime < new Date(row.expires_at).getTime());
+      const filteredResults = results.rows.filter(
+        (row) => currentTime < new Date(row.expires_at).getTime()
+      );
 
       if (filteredResults.length === 1) {
         return {
           statusCode: 200,
           message: "Found one active user",
           jwt_token: filteredResults[0].jwt_token,
-          session_token: filteredResults[0].session_token
+          session_token: filteredResults[0].session_token,
         };
       } else {
         // Remove stale sessions
@@ -352,12 +367,12 @@ export class AuthService {
 
         return {
           statusCode: 201,
-          message: "Past Sessions Terminated"
+          message: "Past Sessions Terminated",
         };
       }
     } catch (error) {
-      console.error('Session persistence error:', error);
-      throw ApiError.internal('Error during session persistence check');
+      console.error("Session persistence error:", error);
+      throw ApiError.internal("Error during session persistence check");
     }
   }
 }

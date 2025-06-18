@@ -1,6 +1,5 @@
-import { userStorage } from '../storage/userStorage';
-import ApiError from '../utils/ApiError';
-import type { User } from '../types/api';
+import { userStorage } from "../storage/userStorage";
+import ApiError from "../utils/ApiError";
 
 /**
  * User Settings Service
@@ -13,93 +12,110 @@ export class UserSettingsService {
   static async getUserSettings(userID: string): Promise<any> {
     try {
       const user = await userStorage.findById(userID);
-      
+
       if (!user) {
-        throw ApiError.notFound('User not found');
+        throw ApiError.notFound("User not found");
       }
 
       // Return only the settings-relevant fields
       return {
-        status: 'success',
-        data: [{
-          email: user.email,
-          organization_name: user.organization_name,
-          organization_country: user.organization_country,
-          organization_domain: user.organization_domain,
-          name: user.name,
-          role: user.role,
-          plan: user.plan,
-          google_id: user.google_id,
-          usertype: user.usertype
-        }]
+        status: "success",
+        data: [
+          {
+            email: user.email,
+            organization_name: user.organization_name,
+            organization_country: user.organization_country,
+            organization_domain: user.organization_domain,
+            name: user.name,
+            role: user.role,
+            plan: user.plan,
+            google_id: user.google_id,
+            usertype: user.usertype,
+          },
+        ],
       };
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internal('Error getting user settings');
+      throw ApiError.internal("Error getting user settings");
     }
   }
 
   /**
    * Update user profile information
    */
-  static async updateUser(userID: string, name: string, requestingUserID: string): Promise<any> {
+  static async updateUser(
+    userID: string,
+    name: string,
+    requestingUserID: string
+  ): Promise<any> {
     try {
       // Input validation
-      if (!name || typeof name !== 'string') {
-        throw ApiError.badRequest('Name is required and must be a string');
+      if (!name || typeof name !== "string") {
+        throw ApiError.badRequest("Name is required and must be a string");
       }
 
       if (name.length < 2 || name.length > 50) {
-        throw ApiError.badRequest('Name must be between 2 and 50 characters');
+        throw ApiError.badRequest("Name must be between 2 and 50 characters");
       }
 
       if (!/^[a-zA-Z\s|]+$/.test(name)) {
-        throw ApiError.badRequest('Name can only contain letters, spaces, and the pipe (|) character');
+        throw ApiError.badRequest(
+          "Name can only contain letters, spaces, and the pipe (|) character"
+        );
       }
 
       // Check if user is updating their own profile
       if (userID !== requestingUserID) {
-        throw ApiError.forbidden('Unauthorized user');
+        throw ApiError.forbidden("Unauthorized user");
       }
 
       const updatedUser = await userStorage.updateById(userID, { name });
-      
+
       if (!updatedUser) {
-        throw ApiError.notFound('User not found');
+        throw ApiError.notFound("User not found");
       }
 
       return {
-        status: 'success',
-        data: 'User updated successfully'
+        status: "success",
+        data: "User updated successfully",
       };
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internal('Error updating user');
+      throw ApiError.internal("Error updating user");
     }
   }
 
   /**
    * Invite new users to organization
    */
-  static async inviteUser(mailList: string, invited_by: string, role: string, organisation_id: string): Promise<any> {
+  static async inviteUser(
+    mailList: string,
+    invited_by: string,
+    role: string,
+    organisation_id: string
+  ): Promise<any> {
     try {
-      const emails = mailList.split(',').map(email => email.trim());
+      const emails = mailList.split(",").map((email) => email.trim());
 
       // Check user existence for all emails
-      const emailChecks = await Promise.all(emails.map(async email => {
-        const user = await userStorage.findByEmail(email);
-        return { email, userExists: !!user };
-      }));
+      const emailChecks = await Promise.all(
+        emails.map(async (email) => {
+          const user = await userStorage.findByEmail(email);
+          return { email, userExists: !!user };
+        })
+      );
 
       // Filter emails that are not registered users
-      const newEmails = emailChecks.filter(({ userExists }) => !userExists).map(({ email }) => email);
-      
+      const newEmails = emailChecks
+        .filter(({ userExists }) => !userExists)
+        .map(({ email }) => email);
+
       if (newEmails.length === 0) {
-        throw ApiError.badRequest('All users are already registered.');
+        throw ApiError.badRequest("All users are already registered.");
       }
 
       // Create invitations for new emails
@@ -110,25 +126,25 @@ export class UserSettingsService {
           invited_by,
           role,
           organisation_id,
-          accepted: false
+          accepted: false,
         };
-        
+
         const invitation = await userStorage.createInvitation(inviteData);
         invitations.push(invitation);
       }
 
       // TODO: Send invitation emails (implement email service)
       // For now, we'll just return success
-      
+
       return {
-        status: 'success',
-        data: 'User invited successfully'
+        status: "success",
+        data: "User invited successfully",
       };
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internal('Error inviting user');
+      throw ApiError.internal("Error inviting user");
     }
   }
 
@@ -139,7 +155,7 @@ export class UserSettingsService {
     try {
       await userStorage.updateMemberInviteByEmail(email);
     } catch (error) {
-      throw ApiError.internal('Error updating member invite');
+      throw ApiError.internal("Error updating member invite");
     }
   }
 
@@ -148,29 +164,35 @@ export class UserSettingsService {
    */
   static async getInvitedMemberData(organisation_id: string): Promise<any> {
     try {
-      const memberData = await userStorage.getInvitedMemberData(organisation_id);
-      
+      const memberData = await userStorage.getInvitedMemberData(
+        organisation_id
+      );
+
       return {
-        status: 'success',
-        data: memberData
+        status: "success",
+        data: memberData,
       };
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internal('Error getting invited member data');
+      throw ApiError.internal("Error getting invited member data");
     }
   }
 
   /**
    * Update user role
    */
-  static async updateRole(role: string, email: string, created_date?: Date): Promise<any> {
+  static async updateRole(
+    role: string,
+    email: string,
+    created_date?: Date
+  ): Promise<any> {
     try {
       // Update user role in users table
       const user = await userStorage.findByEmail(email);
       if (!user) {
-        throw ApiError.notFound('User not found');
+        throw ApiError.notFound("User not found");
       }
 
       await userStorage.updateByEmail(email, { role });
@@ -185,46 +207,50 @@ export class UserSettingsService {
           email,
           role,
           accepted: true,
-          created_date: created_date || new Date()
+          created_date: created_date || new Date(),
         };
         await userStorage.createInvitation(inviteData);
       }
 
       return {
-        status: 'success',
-        data: 'Role updated successfully'
+        status: "success",
+        data: "Role updated successfully",
       };
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internal('Error updating role');
+      throw ApiError.internal("Error updating role");
     }
   }
 
   /**
    * Update organization details
    */
-  static async updateOrganizations(organizationName: string, organizationCountry: string, userID: string): Promise<any> {
+  static async updateOrganizations(
+    organizationName: string,
+    organizationCountry: string,
+    userID: string
+  ): Promise<any> {
     try {
       const updatedUser = await userStorage.updateById(userID, {
         organization_name: organizationName,
-        organization_country: organizationCountry
+        organization_country: organizationCountry,
       });
 
       if (!updatedUser) {
-        throw ApiError.notFound('User not found');
+        throw ApiError.notFound("User not found");
       }
 
       return {
-        status: 'success',
-        data: 'Organization updated successfully'
+        status: "success",
+        data: "Organization updated successfully",
       };
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internal('Error updating organization');
+      throw ApiError.internal("Error updating organization");
     }
   }
 }
