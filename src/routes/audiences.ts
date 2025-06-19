@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import { checkAuthToken, validateTenant } from '../middleware/auth';
+import { Router } from "express";
+import { checkAuthToken, validateTenant } from "../middleware/auth";
 import {
   // Audience endpoints
   createAudience,
@@ -8,7 +8,7 @@ import {
   getAudiencesList,
   updateAudience,
   deleteAudience,
-  
+
   // Cohort endpoints
   createCohort,
   getCohortById,
@@ -17,79 +17,84 @@ import {
   getCohortsByTenant,
   updateCohort,
   deleteCohort,
-  
+
   // Cohort data endpoints
   previewCohortData,
   downloadCohortData,
   generateCohortSQL,
-  
+
   // Real-time filter endpoints
   getFilterCounts,
   previewFilterData,
-  
+
   // Utility endpoints
   getAllObjects,
   getAllRelationships,
   healthCheck,
-  
+
   // Field configuration endpoints
   getObjectFields,
   getObjectDisplayFields,
   getFieldDistinctValues,
   updateObjectFields,
   getAudienceObjectData,
-} from '../controllers/audiences/audienceController';
+  getFilterPreveiwData,
+} from "../controllers/audiences/audienceController";
 
 const router = Router();
 
 // Apply tenant validation middleware to all routes except health check
-router.use('/audiences', checkAuthToken);
-router.use('/cohorts', checkAuthToken);
-router.use('/objects', checkAuthToken);
+router.use("/audiences", checkAuthToken);
+router.use("/cohorts", checkAuthToken);
+router.use("/objects", checkAuthToken);
 
 // Health check
-router.get('/audiences/health', healthCheck);
+router.get("/audiences/health", healthCheck);
 
 // Audience routes
-router.post('/audiences', createAudience);
-router.get('/audiences/:id', getAudienceById);
-router.get('/audiences/:id/details', getAudienceWithDetails);
-router.get('/audiences', getAudiencesList);
-router.put('/audiences/:id', updateAudience);
-router.delete('/audiences/:id', deleteAudience);
+router.post("/audiences", createAudience);
+router.get("/audiences/:id", getAudienceById);
+router.get("/audiences/:id/details", getAudienceWithDetails);
+router.get("/audiences", getAudiencesList);
+router.put("/audiences/:id", updateAudience);
+router.delete("/audiences/:id", deleteAudience);
 
 // Cohort routes
-router.post('/cohorts', createCohort);
-router.get('/cohorts/:id', getCohortById);
-router.get('/cohorts/:id/details', getCohortWithAudience);
-router.get('/cohorts', getCohortsByTenant); // Can be filtered by audienceId or tenantId
-router.put('/cohorts/:id', updateCohort);
-router.delete('/cohorts/:id', deleteCohort);
+router.post("/cohorts", createCohort);
+router.get("/cohorts/:id", getCohortById);
+router.get("/cohorts/:id/details", getCohortWithAudience);
+router.get("/cohorts", getCohortsByTenant); // Can be filtered by audienceId or tenantId
+router.put("/cohorts/:id", updateCohort);
+router.delete("/cohorts/:id", deleteCohort);
 
 // Cohort data routes
-router.get('/cohorts/:id/preview', previewCohortData);
+router.get("/cohorts/:id/preview", previewCohortData);
 // router.get('/cohorts/:id/counts', getCohortCounts);
-router.get('/cohorts/:id/download', downloadCohortData);
-router.get('/cohorts/:id/sql', generateCohortSQL);
+router.get("/cohorts/:id/download", downloadCohortData);
+router.get("/cohorts/:id/sql", generateCohortSQL);
 
 // Alternative cohort routes by audience
-router.get('/audiences/:audienceId/cohorts', getCohortsByAudience);
+router.get("/audiences/:audienceId/cohorts", getCohortsByAudience);
 
 // Real-time filter endpoints
-router.post('/filters/counts', getFilterCounts);
-router.post('/filters/preview', previewFilterData);
+router.post("/filters/counts", getFilterCounts);
+router.post("/filters/preview", previewFilterData);
+router.post("/filters/get-preview", getFilterPreveiwData);
 
 // Utility routes
-router.get('/objects', getAllObjects);
-router.get('/relationships', getAllRelationships);
+router.get("/objects", getAllObjects);
+router.get("/relationships", getAllRelationships);
 
 // Field configuration routes
-router.get('/objects/:objectId/fields', getObjectFields);
-router.get('/objects/:objectId/display-fields', getObjectDisplayFields);
-router.get('/objects/:objectId/fields/:fieldName/values', getFieldDistinctValues);
-router.put('/objects/:objectId/fields', updateObjectFields);
+router.get("/objects/:objectId/fields", getObjectFields);
+router.get("/objects/:objectId/display-fields", getObjectDisplayFields);
+router.get(
+  "/objects/:objectId/fields/:fieldName/values",
+  getFieldDistinctValues
+);
+router.put("/objects/:objectId/fields", updateObjectFields);
 
 // Audience data routes
-router.get('/audiences/:id/objects/:objectId/data', getAudienceObjectData);
+router.get("/audiences/:id/objects/:objectId/data", getAudienceObjectData);
 
 export default router;
