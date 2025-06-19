@@ -25,6 +25,8 @@ export class CohortService {
     createdBy: string;
     companyFilters: any[];
     contactFilters: any[];
+    companyCount: any;
+    contactCount: any;
   }): Promise<Cohort> {
     // Prepare filters in the expected format
     const filters: CohortFilters = {
@@ -40,6 +42,8 @@ export class CohortService {
       tenantId: data.tenantId,
       createdBy: data.createdBy,
       filters,
+      companyCount: data.companyCount,
+      peopleCount: data.contactCount,
       status: "processing",
     };
 

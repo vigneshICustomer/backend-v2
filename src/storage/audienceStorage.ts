@@ -1,21 +1,22 @@
-import { eq, and, desc } from 'drizzle-orm';
-import { db } from '../db/connection';
-import { 
-  audiences, 
-  audienceObjects, 
-  objects, 
+import { eq, and, desc, sql } from "drizzle-orm";
+import { db } from "../db/connection";
+import {
+  audiences,
+  audienceObjects,
+  objects,
   relationships,
   cohorts,
-  type Audience, 
+  type Audience,
   type NewAudience,
-  type AudienceObject, 
+  type AudienceObject,
   type NewAudienceObject,
   type Object,
   type Relationship,
   type Cohort,
   type NewCohort,
-  type CohortFilters
-} from '../db/schema/audiences';
+  type CohortFilters,
+} from "../db/schema/audiences";
+import { users } from "../db/schema/users";
 
 /**
  * Audience Storage
@@ -24,7 +25,11 @@ import {
 export const audienceStorage = {
   // Audience CRUD operations
   async findAudienceById(id: string): Promise<Audience | null> {
-    const result = await db.select().from(audiences).where(eq(audiences.id, id)).limit(1);
+    const result = await db
+      .select()
+      .from(audiences)
+      .where(eq(audiences.id, id))
+      .limit(1);
     return result[0] || null;
   },
 
@@ -41,7 +46,10 @@ export const audienceStorage = {
     return result[0];
   },
 
-  async updateAudience(id: string, updates: Partial<NewAudience>): Promise<Audience | null> {
+  async updateAudience(
+    id: string,
+    updates: Partial<NewAudience>
+  ): Promise<Audience | null> {
     const result = await db
       .update(audiences)
       .set({ ...updates, updatedAt: new Date() })
@@ -56,17 +64,27 @@ export const audienceStorage = {
   },
 
   // Audience Objects operations
-  async addObjectsToAudience(audienceId: string, objectMappings: { objectId: number; alias: string }[]): Promise<AudienceObject[]> {
-    const audienceObjectsData: NewAudienceObject[] = objectMappings.map(mapping => ({
-      audienceId,
-      objectId: mapping.objectId,
-      alias: mapping.alias,
-    }));
+  async addObjectsToAudience(
+    audienceId: string,
+    objectMappings: { objectId: number; alias: string }[]
+  ): Promise<AudienceObject[]> {
+    const audienceObjectsData: NewAudienceObject[] = objectMappings.map(
+      (mapping) => ({
+        audienceId,
+        objectId: mapping.objectId,
+        alias: mapping.alias,
+      })
+    );
 
-    return await db.insert(audienceObjects).values(audienceObjectsData).returning();
+    return await db
+      .insert(audienceObjects)
+      .values(audienceObjectsData)
+      .returning();
   },
 
-  async getAudienceObjects(audienceId: string): Promise<(AudienceObject & { object: Object })[]> {
+  async getAudienceObjects(
+    audienceId: string
+  ): Promise<(AudienceObject & { object: Object })[]> {
     return await db
       .select({
         id: audienceObjects.id,
@@ -94,19 +112,27 @@ export const audienceStorage = {
   },
 
   async findObjectById(id: number): Promise<Object | null> {
-    const result = await db.select().from(objects).where(eq(objects.id, id)).limit(1);
+    const result = await db
+      .select()
+      .from(objects)
+      .where(eq(objects.id, id))
+      .limit(1);
     return result[0] || null;
   },
 
   async findObjectByName(name: string): Promise<Object | null> {
-    const result = await db.select().from(objects).where(eq(objects.name, name)).limit(1);
+    const result = await db
+      .select()
+      .from(objects)
+      .where(eq(objects.name, name))
+      .limit(1);
     return result[0] || null;
   },
 
   async getObjectFields(objectId: number): Promise<any[]> {
     const object = await this.findObjectById(objectId);
     if (!object || !object.fields) return [];
-    
+
     // Parse the fields JSON and return filterable fields
     const fields = Array.isArray(object.fields) ? object.fields : [];
     return fields.filter((field: any) => field.isFilterable);
@@ -115,7 +141,7 @@ export const audienceStorage = {
   async getObjectDisplayFields(objectId: number): Promise<any[]> {
     const object = await this.findObjectById(objectId);
     if (!object || !object.fields) return [];
-    
+
     // Parse the fields JSON and return displayable fields
     const fields = Array.isArray(object.fields) ? object.fields : [];
     return fields.filter((field: any) => field.isDisplayable);
@@ -135,9 +161,11 @@ export const audienceStorage = {
     return await db.select().from(relationships);
   },
 
-  async getRelationshipsBetweenObjects(objectIds: number[]): Promise<Relationship[]> {
+  async getRelationshipsBetweenObjects(
+    objectIds: number[]
+  ): Promise<Relationship[]> {
     if (objectIds.length < 2) return [];
-    
+
     // This is a simplified query - in practice you'd want to check if both fromObjectId and toObjectId are in the objectIds array
     return await db
       .select()
@@ -147,7 +175,11 @@ export const audienceStorage = {
 
   // Cohort CRUD operations
   async findCohortById(id: string): Promise<Cohort | null> {
-    const result = await db.select().from(cohorts).where(eq(cohorts.id, id)).limit(1);
+    const result = await db
+      .select()
+      .from(cohorts)
+      .where(eq(cohorts.id, id))
+      .limit(1);
     return result[0] || null;
   },
 
@@ -159,12 +191,16 @@ export const audienceStorage = {
       .orderBy(desc(cohorts.createdAt));
   },
 
-  async findCohortsByTenant(tenantId: string): Promise<Cohort[]> {
-    return await db
-      .select()
-      .from(cohorts)
-      .where(eq(cohorts.tenantId, tenantId))
-      .orderBy(desc(cohorts.createdAt));
+  async findCohortsByTenant(tenantId: string): Promise<any> {
+    return await db.execute(sql`
+    SELECT 
+      c.*, 
+      u.name AS "createdByName"
+    FROM audience_hub.cohorts c
+    LEFT JOIN dev.users u ON c.created_by = u.id::text
+    WHERE c.tenant_id = ${tenantId}
+    ORDER BY c.created_at DESC
+  `);
   },
 
   async createCohort(cohortData: NewCohort): Promise<Cohort> {
@@ -172,7 +208,10 @@ export const audienceStorage = {
     return result[0];
   },
 
-  async updateCohort(id: string, updates: Partial<NewCohort>): Promise<Cohort | null> {
+  async updateCohort(
+    id: string,
+    updates: Partial<NewCohort>
+  ): Promise<Cohort | null> {
     const result = await db
       .update(cohorts)
       .set({ ...updates, updatedAt: new Date() })
@@ -181,28 +220,36 @@ export const audienceStorage = {
     return result[0] || null;
   },
 
-  async updateCohortCounts(id: string, companyCount: number, peopleCount: number): Promise<Cohort | null> {
+  async updateCohortCounts(
+    id: string,
+    companyCount: number,
+    peopleCount: number
+  ): Promise<Cohort | null> {
     const result = await db
       .update(cohorts)
-      .set({ 
-        companyCount, 
-        peopleCount, 
+      .set({
+        companyCount,
+        peopleCount,
         lastProcessedAt: new Date(),
-        status: 'active',
-        updatedAt: new Date()
+        status: "active",
+        updatedAt: new Date(),
       })
       .where(eq(cohorts.id, id))
       .returning();
     return result[0] || null;
   },
 
-  async updateCohortStatus(id: string, status: string, errorMessage?: string): Promise<Cohort | null> {
+  async updateCohortStatus(
+    id: string,
+    status: string,
+    errorMessage?: string
+  ): Promise<Cohort | null> {
     const result = await db
       .update(cohorts)
-      .set({ 
-        status, 
+      .set({
+        status,
         errorMessage,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(cohorts.id, id))
       .returning();
@@ -224,10 +271,12 @@ export const audienceStorage = {
     if (!audience) return null;
 
     const audienceObjectsWithDetails = await this.getAudienceObjects(id);
-    
+
     // Get available relationships between the objects in this audience
-    const objectIds = audienceObjectsWithDetails.map(ao => ao.objectId);
-    const availableRelationships = await this.getRelationshipsBetweenObjects(objectIds);
+    const objectIds = audienceObjectsWithDetails.map((ao) => ao.objectId);
+    const availableRelationships = await this.getRelationshipsBetweenObjects(
+      objectIds
+    );
 
     return {
       audience,
@@ -264,5 +313,5 @@ export const audienceStorage = {
     } catch (error) {
       return false;
     }
-  }
+  },
 };
