@@ -148,9 +148,17 @@ export const deleteAudience = catchAsync(
  * Create a new cohort
  */
 export const createCohort = catchAsync(async (req: Request, res: Response) => {
-  const { name, description, audienceId, filters, peopleFilters } = req.body;
+  const {
+    name,
+    description,
+    audienceId,
+    filters,
+    peopleFilters,
+    companyCount,
+    contactCount,
+  } = req.body;
 
-  const tenantId = req.tenantId;
+  const tenantId = req.user?.organisation_id;
   const createdBy = req.user?.id || "system";
 
   if (!name || !audienceId) {
@@ -173,11 +181,11 @@ export const createCohort = catchAsync(async (req: Request, res: Response) => {
   }
 
   // If using new format directly
-  if (req.body.companyFilters) {
-    companyFilters = req.body.companyFilters;
+  if (req?.body?.companyFilters) {
+    companyFilters = req?.body?.companyFilters || [];
   }
-  if (req.body.contactFilters) {
-    contactFilters = req.body.contactFilters;
+  if (req?.body?.contactFilters) {
+    contactFilters = req?.body?.contactFilters || [];
   }
 
   const cohort = await cohortService.createCohort({
@@ -188,6 +196,8 @@ export const createCohort = catchAsync(async (req: Request, res: Response) => {
     createdBy,
     companyFilters,
     contactFilters,
+    companyCount,
+    contactCount,
   });
 
   res.status(201).json({
@@ -261,17 +271,17 @@ export const getCohortsByAudience = catchAsync(
  */
 export const getCohortsByTenant = catchAsync(
   async (req: Request, res: Response) => {
-    const tenantId = req.tenantId;
+    const tenantId = req?.user?.organisation_id || "";
 
     if (!tenantId) {
       throw new ApiError(400, "Tenant ID is required");
     }
 
-    const cohorts = await cohortService.getCohortsByTenant(tenantId);
+    const cohorts: any = await cohortService.getCohortsByTenant(tenantId);
 
     res.status(200).json({
       success: true,
-      data: cohorts,
+      data: cohorts.rows,
       count: cohorts.length,
     });
   }
