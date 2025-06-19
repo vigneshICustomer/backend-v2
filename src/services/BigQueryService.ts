@@ -354,6 +354,123 @@ export class BigQueryService {
   }
 
   /**
+   * Get schemas from specific datasets (e.g., unified_account, unified_contact)
+   * @param connectionId Connection ID
+   * @param datasetNames Array of dataset names to fetch schemas from
+   * @param tableNames Optional array of specific table names to filter
+   * @returns Schemas from specified datasets
+   */
+  async getSchemasFromDatasets(connectionId: string, datasetNames: string[], tableNames?: string[]): Promise<any> {
+    try {
+      // Get connection from database using Drizzle ORM
+      const connectionRecord = await connectionsStorage.findById(connectionId);
+      
+      if (!connectionRecord) {
+        throw ApiError.notFound('Connection not found');
+      }
+      
+      // Check connection status
+      if (connectionRecord.status !== ConnectionStatus.CONNECTED) {
+        throw ApiError.badRequest('Connection is not active');
+      }
+      
+      // Decrypt credentials
+      const credentials = decryptObject<BigQueryCredentials>(connectionRecord.credentialsEncrypted);
+      
+      // Create BigQuery client
+      const bigquery = new BigQuery({
+        projectId: credentials.project_id,
+        credentials
+      });
+      
+      const result: any = {
+        projectId: credentials.project_id,
+        datasets: []
+      };
+      
+      // Process each specified dataset
+      for (const datasetName of datasetNames) {
+        try {
+          // Get the specific dataset
+          const dataset = bigquery.dataset(datasetName);
+          
+          // Check if dataset exists by trying to get its metadata
+          const [datasetMetadata] = await dataset.getMetadata();
+          
+          // Get tables in this dataset
+          const [tables] = await dataset.getTables();
+          
+          const datasetInfo: any = {
+            id: datasetName,
+            name: datasetName,
+            location: datasetMetadata.location,
+            description: datasetMetadata.description || null,
+            tables: []
+          };
+          
+          // Process each table in the dataset
+          for (const table of tables) {
+            const tableId = table.id || 'unknown';
+            
+            // If tableNames is specified, only process those tables
+            if (tableNames && tableNames.length > 0 && !tableNames.includes(tableId)) {
+              continue;
+            }
+            
+            try {
+              // Get table metadata and schema
+              const [metadata] = await table.getMetadata();
+              
+              const tableInfo = {
+                id: tableId,
+                name: tableId,
+                type: metadata.type,
+                schema: {
+                  fields: metadata.schema?.fields || []
+                },
+                description: metadata.description || null,
+                creationTime: metadata.creationTime || null,
+                lastModifiedTime: metadata.lastModifiedTime || null,
+                numRows: metadata.numRows || null,
+                numBytes: metadata.numBytes || null,
+                labels: metadata.labels || {}
+              };
+              
+              datasetInfo.tables.push(tableInfo);
+            } catch (tableError) {
+              console.error(`Error getting schema for table ${datasetName}.${tableId}:`, tableError);
+              // Add table with error info
+              datasetInfo.tables.push({
+                id: tableId,
+                name: tableId,
+                error: 'Could not retrieve table schema',
+                hasAccess: false
+              });
+            }
+          }
+          
+          result.datasets.push(datasetInfo);
+        } catch (datasetError) {
+          console.error(`Error processing dataset ${datasetName}:`, datasetError);
+          // Add dataset with error info
+          result.datasets.push({
+            id: datasetName,
+            name: datasetName,
+            error: `Dataset '${datasetName}' not found or access denied`,
+            hasAccess: false,
+            tables: []
+          });
+        }
+      }
+      
+      return result;
+    } catch (error: any) {
+      console.error('Error getting schemas from specified datasets:', error);
+      throw error instanceof ApiError ? error : ApiError.internal('Failed to get schemas from specified datasets');
+    }
+  }
+
+  /**
    * Execute a query against BigQuery
    * @param connectionId Connection ID
    * @param queryString SQL query string
