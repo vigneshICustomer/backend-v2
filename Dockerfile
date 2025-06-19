@@ -31,6 +31,8 @@ RUN adduser -S nextjs -u 1001
 # Copy package files
 COPY package*.json ./
 
+COPY .env ./.env
+
 # Install only production dependencies
 RUN npm ci --only=production && npm cache clean --force
 
