@@ -1,112 +1,47 @@
-import * as dotenv from "dotenv";
-
+import dotenv from "dotenv";
 dotenv.config();
 
-interface Environment {
-  NODE_ENV: string;
-  PORT: any;
+const environment = {
+  NODE_ENV: process.env.NODE_ENV || "development",
+  PORT: parseInt(process.env.PORT || "3001", 10),
 
-  // Database
-  DB_HOST: string;
-  DB_USER: string;
-  DB_PASSWORD: string;
-  DB_NAME: string;
-  DB_PORT: number;
+  // Database Configuration
+  DB_HOST: process.env.DB_HOST!,
+  DB_USER: process.env.DB_USER!,
+  DB_PASSWORD: process.env.DB_PASSWORD!,
+  DB_NAME: process.env.DB_NAME!,
+  DB_PORT: parseInt(process.env.DB_PORT || "5432", 10),
 
-  // JWT
-  JWT_SECRET_KEY: string;
-
-  // URLs
-  BASE_URL: string;
-  VERIFY_USER_URL: string;
-  RESET_PASSWORD_URL: string;
+  // JWT Configuration
+  JWT_SECRET_KEY: process.env.JWT_SECRET_KEY!,
 
   // Rate Limiting
-  RATE_LIMIT_COUNT: number;
-
-  // CORS
-  ALLOWED_ORIGINS: string[];
-
-<<<<<<< HEAD
-  // AWS
-  AWS_ACCESS_KEY_ID: string;
-  AWS_SECRET_ACCESS_KEY: string;
-  AWS_REGION: string;
-=======
-  // BigQuery
-  BIGQUERY_PROJECT_ID?: string;
-  BIGQUERY_DATASET_ID?: string;
-  BIGQUERY_KEY_FILE?: string;
->>>>>>> 2a57aaa (Basic Audience Hub API BAselined)
-}
-
-const environment: Environment = {
-  NODE_ENV: process.env.NODE_ENV || "development",
-<<<<<<< HEAD
-  PORT: parseInt(process.env.PORT || "3002", 10),
-
-=======
-  PORT: process.env.PORT,
->>>>>>> 31cb2a9 (Changes that are sufficient for Audiences (T1))
-  // Database configuration based on environment
-  DB_HOST:
-    process.env.NODE_ENV === "production"
-      ? process.env.PROD_DB_HOST || "34.224.20.134"
-      : process.env.DB_HOST || "localhost",
-  DB_USER:
-    process.env.NODE_ENV === "production"
-      ? process.env.PROD_DB_USER || "postgres"
-      : process.env.DB_USER || "postgres",
-  DB_PASSWORD:
-    process.env.NODE_ENV === "production"
-      ? process.env.PROD_DB_PASSWORD || "S&dpu738wM#V37DU$p3A%"
-      : process.env.DB_PASSWORD || "your_password",
-  DB_NAME:
-    process.env.NODE_ENV === "production"
-      ? process.env.PROD_DB_NAME || "test_wb"
-      : process.env.DB_NAME || "test_wb",
-  DB_PORT:
-    process.env.NODE_ENV === "production"
-      ? parseInt(process.env.PROD_DB_PORT || "41063", 10)
-      : parseInt(process.env.DB_PORT || "5432", 10),
-
-  JWT_SECRET_KEY:
-    process.env.JWT_SECRET_KEY ||
-    "c98ee5afabfaa4a8e743803ec7e4f14a4c8a1bead5a0d3e36fc892979ab581dc",
-
-  BASE_URL: process.env.BASE_URL || "http://localhost:3000",
-  VERIFY_USER_URL:
-    process.env.VERIFY_USER_URL || "https://app.gtmcopilot.com/#/verify-user/",
-  RESET_PASSWORD_URL:
-    process.env.RESET_PASSWORD_URL ||
-    "https://app.gtmcopilot.com/#/reset-password/",
-
   RATE_LIMIT_COUNT: parseInt(process.env.RATE_LIMIT_COUNT || "100", 10),
 
-  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS?.split(",") || [
-    "http://localhost:3000",
-  ],
+  // CORS
+  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS?.split(",") || [],
 
-<<<<<<< HEAD
-  AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || "",
-  AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || "",
-  AWS_REGION: process.env.AWS_REGION || "us-east-1",
-=======
-  // BigQuery configuration
-  BIGQUERY_PROJECT_ID: process.env.BIGQUERY_PROJECT_ID,
-  BIGQUERY_DATASET_ID: process.env.BIGQUERY_DATASET_ID,
-  BIGQUERY_KEY_FILE: process.env.BIGQUERY_KEY_FILE,
->>>>>>> 2a57aaa (Basic Audience Hub API BAselined)
+  // AWS Configuration
+  AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID!,
+  AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY!,
+  AWS_REGION: process.env.AWS_REGION!,
 };
 
 export default environment;
 
 // Workflow credentials (can be null in development)
 export const workflowLogCredentials =
-  process.env.NODE_ENV === "production" ? null : null;
+  environment.NODE_ENV === "production"
+    ? process.env.WORKFLOW_LOG_CREDENTIALS
+    : null;
 
 // Table names for workflows and webhooks
 export const webhookRecordsTableName =
-  process.env.NODE_ENV === "production" ? null : null;
+  environment.NODE_ENV === "production"
+    ? process.env.WEBHOOK_RECORDS_TABLE_NAME
+    : null;
+
 export const workflowsTableName =
-  process.env.NODE_ENV === "production" ? null : null;
+  environment.NODE_ENV === "production"
+    ? process.env.WORKFLOWS_TABLE_NAME
+    : null;

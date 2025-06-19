@@ -1,10 +1,6 @@
-import { audienceStorage } from '../storage/audienceStorage';
-import AudienceBigQueryAdapter from './AudienceBigQueryAdapter';
-import type { 
-  Cohort, 
-  NewCohort, 
-  CohortFilters
-} from '../db/schema/audiences';
+import { audienceStorage } from "../storage/audienceStorage";
+import AudienceBigQueryAdapter from "./AudienceBigQueryAdapter";
+import type { Cohort, NewCohort, CohortFilters } from "../db/schema/audiences";
 
 export class CohortService {
   private bigQueryAdapter: AudienceBigQueryAdapter;
@@ -44,7 +40,7 @@ export class CohortService {
       tenantId: data.tenantId,
       createdBy: data.createdBy,
       filters,
-      status: 'processing',
+      status: "processing",
     };
 
     const cohort = await audienceStorage.createCohort(cohortData);
@@ -74,7 +70,10 @@ export class CohortService {
     return await audienceStorage.getCohortWithAudience(cohortId);
   }
 
-  async updateCohort(id: string, updates: Partial<NewCohort>): Promise<Cohort | null> {
+  async updateCohort(
+    id: string,
+    updates: Partial<NewCohort>
+  ): Promise<Cohort | null> {
     return await audienceStorage.updateCohort(id, updates);
   }
 
@@ -83,69 +82,86 @@ export class CohortService {
   }
 
   // Cohort data operations
-  async previewCohortData(cohortId: string, limit: number = 100): Promise<any[]> {
+  async previewCohortData(
+    cohortId: string,
+    limit: number = 100
+  ): Promise<any[]> {
     const cohort = await audienceStorage.findCohortById(cohortId);
     if (!cohort) {
-      throw new Error('Cohort not found');
+      throw new Error("Cohort not found");
     }
 
     // Get audience configuration
-    const audienceConfig = await this.getAudienceConfiguration(cohort.audienceId);
+    const audienceConfig = await this.getAudienceConfiguration(
+      cohort.audienceId
+    );
     const filters = cohort.filters as CohortFilters;
-    
-    return await this.bigQueryAdapter.executeCohortQuery(filters, audienceConfig, limit);
+
+    return await this.bigQueryAdapter.executeCohortQuery(
+      filters,
+      audienceConfig,
+      limit,
+      "4fc75b9b-8946-4b32-bdd5-9d2a876b7ad1"
+    );
   }
 
-//   async getCohortCounts(cohortId: string): Promise<{ companyCount: number; peopleCount: number }> {
-//     const cohort = await audienceStorage.findCohortById(cohortId);
-//     if (!cohort) {
-//       throw new Error('Cohort not found');
-//     }
+  //   async getCohortCounts(cohortId: string): Promise<{ companyCount: number; peopleCount: number }> {
+  //     const cohort = await audienceStorage.findCohortById(cohortId);
+  //     if (!cohort) {
+  //       throw new Error('Cohort not found');
+  //     }
 
-//     // Return cached counts if available and recent
-//     if (cohort.companyCount !== null && cohort.peopleCount !== null && cohort.lastProcessedAt) {
-//       const hoursSinceLastProcessed = (Date.now() - cohort.lastProcessedAt.getTime()) / (1000 * 60 * 60);
-//       if (hoursSinceLastProcessed < 24) { // Cache for 24 hours
-//         return {
-//           companyCount: cohort.companyCount,
-//           peopleCount: cohort.peopleCount,
-//         };
-//       }
-//     }
+  //     // Return cached counts if available and recent
+  //     if (cohort.companyCount !== null && cohort.peopleCount !== null && cohort.lastProcessedAt) {
+  //       const hoursSinceLastProcessed = (Date.now() - cohort.lastProcessedAt.getTime()) / (1000 * 60 * 60);
+  //       if (hoursSinceLastProcessed < 24) { // Cache for 24 hours
+  //         return {
+  //           companyCount: cohort.companyCount,
+  //           peopleCount: cohort.peopleCount,
+  //         };
+  //       }
+  //     }
 
-//     // Fetch fresh counts from BigQuery
-//     const filters = cohort.filters as CohortFilters;
-//     const counts = await this.bigQueryAdapter.getCohortCounts(filters);
+  //     // Fetch fresh counts from BigQuery
+  //     const filters = cohort.filters as CohortFilters;
+  //     const counts = await this.bigQueryAdapter.getCohortCounts(filters);
 
-//     // Update cached counts
-//     await audienceStorage.updateCohortCounts(cohortId, counts.companyCount, counts.peopleCount);
+  //     // Update cached counts
+  //     await audienceStorage.updateCohortCounts(cohortId, counts.companyCount, counts.peopleCount);
 
-//     return counts;
-//   }
+  //     return counts;
+  //   }
 
   async downloadCohortData(cohortId: string): Promise<any[]> {
     const cohort = await audienceStorage.findCohortById(cohortId);
     if (!cohort) {
-      throw new Error('Cohort not found');
+      throw new Error("Cohort not found");
     }
 
     // Get audience configuration
-    const audienceConfig = await this.getAudienceConfiguration(cohort.audienceId);
+    const audienceConfig = await this.getAudienceConfiguration(
+      cohort.audienceId
+    );
     const filters = cohort.filters as CohortFilters;
-    
-    return await this.bigQueryAdapter.executeCohortQuery(filters, audienceConfig); // No limit for download
+
+    return await this.bigQueryAdapter.executeCohortQuery(
+      filters,
+      audienceConfig
+    ); // No limit for download
   }
 
   async generateCohortSQL(cohortId: string): Promise<string> {
     const cohort = await audienceStorage.findCohortById(cohortId);
     if (!cohort) {
-      throw new Error('Cohort not found');
+      throw new Error("Cohort not found");
     }
 
     // Get audience configuration
-    const audienceConfig = await this.getAudienceConfiguration(cohort.audienceId);
+    const audienceConfig = await this.getAudienceConfiguration(
+      cohort.audienceId
+    );
     const filters = cohort.filters as CohortFilters;
-    
+
     return this.bigQueryAdapter.generateCohortSQL(filters, audienceConfig);
   }
 
@@ -156,37 +172,65 @@ export class CohortService {
   ): Promise<{ companyCount: number; peopleCount: number }> {
     // Get audience configuration
     const audienceConfig = await this.getAudienceConfiguration(audienceId);
-    
+
     // Use the dynamic count query with audience configuration
-    return await this.bigQueryAdapter.getCohortCountsWithConfig(filters, audienceConfig, '4fc75b9b-8946-4b32-bdd5-9d2a876b7ad1');
+    return await this.bigQueryAdapter.getCohortCountsWithConfig(
+      filters,
+      audienceConfig,
+      "4fc75b9b-8946-4b32-bdd5-9d2a876b7ad1"
+    );
+  }
+
+  // Fetch sample filter operations (without creating a cohort)
+  async getFilterPreveiwData(
+    audienceId: string,
+    filters: CohortFilters
+  ): Promise<{
+    companyPreview: any;
+    contactPreview: any;
+  }> {
+    // Get audience configuration
+    const audienceConfig = await this.getAudienceConfiguration(audienceId);
+
+    // Use the dynamic count query with audience configuration
+    return await this.bigQueryAdapter.getCohortPreviewWithConfig(
+      filters,
+      audienceConfig,
+      "4fc75b9b-8946-4b32-bdd5-9d2a876b7ad1"
+    );
   }
 
   async previewFilterData(
     audienceId: string,
-    filters: CohortFilters, 
+    filters: CohortFilters,
     limit: number = 100
   ): Promise<any[]> {
     // Get audience configuration
     const audienceConfig = await this.getAudienceConfiguration(audienceId);
-    
-    return await this.bigQueryAdapter.executeCohortQuery(filters, audienceConfig, limit);
+
+    return await this.bigQueryAdapter.executeCohortQuery(
+      filters,
+      audienceConfig,
+      limit,
+      "4fc75b9b-8946-4b32-bdd5-9d2a876b7ad1"
+    );
   }
 
   // Private helper methods
-//   private async processCohortCounts(cohortId: string, filters: CohortFilters): Promise<void> {
-//     try {
-//       const counts = await this.bigQueryAdapter.getCohortCounts(filters);
-//       await audienceStorage.updateCohortCounts(cohortId, counts.companyCount, counts.peopleCount);
-//     } catch (error) {
-//       console.error('Error processing cohort counts:', error);
-//       await audienceStorage.updateCohortStatus(
-//         cohortId, 
-//         'error', 
-//         error instanceof Error ? error.message : 'Unknown error'
-//       );
-//       throw error;
-//     }
-//   }
+  //   private async processCohortCounts(cohortId: string, filters: CohortFilters): Promise<void> {
+  //     try {
+  //       const counts = await this.bigQueryAdapter.getCohortCounts(filters);
+  //       await audienceStorage.updateCohortCounts(cohortId, counts.companyCount, counts.peopleCount);
+  //     } catch (error) {
+  //       console.error('Error processing cohort counts:', error);
+  //       await audienceStorage.updateCohortStatus(
+  //         cohortId,
+  //         'error',
+  //         error instanceof Error ? error.message : 'Unknown error'
+  //       );
+  //       throw error;
+  //     }
+  //   }
 
   /**
    * Get audience configuration with objects and relationships
@@ -201,9 +245,11 @@ export class CohortService {
     }>;
   }> {
     // Get audience details with objects
-    const audienceDetails = await audienceStorage.getAudienceWithDetails(audienceId);
+    const audienceDetails = await audienceStorage.getAudienceWithDetails(
+      audienceId
+    );
     if (!audienceDetails) {
-      throw new Error('Audience not found');
+      throw new Error("Audience not found");
     }
 
     // Transform audience objects to the expected format
