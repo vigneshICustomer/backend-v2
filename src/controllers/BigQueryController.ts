@@ -128,11 +128,34 @@ export const executeQuery = catchAsync(async (req: AuthenticatedRequest, res: Re
   });
 });
 
+/**
+ * Get schemas from specific datasets
+ * @route POST /api/bigquery/connections/:id/schemas
+ */
+export const getSchemasFromDatasets = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { datasets } = req.body;
+  
+  // Validate input
+  if (!datasets || !Array.isArray(datasets) || datasets.length === 0) {
+    throw ApiError.badRequest('Datasets array is required and must not be empty');
+  }
+  
+  // Get schemas from specified datasets
+  const schemas = await BigQueryService.getSchemasFromDatasets(id, datasets);
+  
+  res.status(200).json({
+    status: 'success',
+    data: schemas
+  });
+});
+
 export default {
   createConnection,
   validateConnection,
   listDatasets,
   listTables,
   getTableSchema,
-  executeQuery
+  executeQuery,
+  getSchemasFromDatasets
 };

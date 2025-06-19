@@ -26,9 +26,7 @@ const environment = {
   AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY!,
   AWS_REGION: process.env.AWS_REGION!,
 };
-
 export default environment;
-
 // Workflow credentials (can be null in development)
 export const workflowLogCredentials =
   environment.NODE_ENV === "production"

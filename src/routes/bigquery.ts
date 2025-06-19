@@ -45,4 +45,10 @@ router.post(
   BigQueryController.executeQuery
 );
 
+// Get schemas from specific datasets
+router.post(
+  '/connections/:id/schemas',
+  BigQueryController.getSchemasFromDatasets
+);
+
 export default router;
