@@ -348,4 +348,123 @@ export class AuthService {
       throw ApiError.internal('Error during session persistence check');
     }
   }
+
+  /**
+   * Validate invitation
+   */
+  static async validateInvitation(invitationId: string): Promise<any> {
+    try {
+      const invite = await userStorage.findInviteById(invitationId);
+      
+      if (!invite) {
+        throw ApiError.notFound('Invitation not found or expired');
+      }
+
+      if (invite.accepted) {
+        throw ApiError.badRequest('Invitation has already been accepted');
+      }
+
+      // Check if user already exists
+      const existingUser = await userStorage.findByEmail(invite.email);
+      if (existingUser) {
+        throw ApiError.badRequest('User with this email already exists');
+      }
+
+      return {
+        status: 'success',
+        data: {
+          email: invite.email,
+          role: invite.role || 'Viewer',
+          organisation_id: invite.organisation_id || '',
+          invited_by: invite.invited_by || ''
+        }
+      };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw ApiError.internal('Error validating invitation');
+    }
+  }
+
+  /**
+   * Google signup with invitation
+   */
+  static async googleSignupWithInvitation(data: any, ip: string): Promise<LoginResponse> {
+    try {
+      const { 
+        googleID, 
+        username, 
+        email, 
+        name, 
+        inviteID,
+        organization_name,
+        organization_domain,
+        role = 'Admin'
+      } = data;
+
+      // Validate invitation
+      const invite = await userStorage.findInviteById(inviteID);
+      
+      if (!invite) {
+        throw ApiError.notFound('Invitation not found or expired');
+      }
+
+      if (invite.accepted) {
+        throw ApiError.badRequest('Invitation has already been accepted');
+      }
+
+      if (invite.email !== email) {
+        throw ApiError.forbidden('Email does not match the invitation');
+      }
+
+      // Check if user already exists
+      const existingUser = await userStorage.findByEmail(email);
+      if (existingUser) {
+        throw ApiError.badRequest('User with this email already exists');
+      }
+
+      // Create new user
+      const newUser = await userStorage.findOrCreateGoogleUser({
+        googleID,
+        username,
+        email,
+        organization_name: organization_name,
+        organization_domain: organization_domain,
+        name,
+        role: invite.role || 'Viewer', // Use role from invitation
+        organisation_id: invite.organisation_id || undefined
+      });
+
+      // Mark invitation as accepted
+      await userStorage.updateInviteAccepted(inviteID);
+
+      // Generate JWT token
+      const token = jwt.sign(newUser, environment.JWT_SECRET_KEY);
+      
+      // Create session
+      const sessionData = {
+        user_id: newUser.id,
+        session_token: this.generateSessionToken(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        ip: ip,
+        jwt_token: token
+      };
+      
+      const session = await userStorage.createSession(sessionData);
+
+      return {
+        status: 'success',
+        message: 'Account created successfully',
+        token,
+        sessionToken: session.session_token,
+        user: this.convertToApiUser(newUser)
+      };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw ApiError.internal('Error during signup with invitation');
+    }
+  }
 }
