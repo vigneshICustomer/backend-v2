@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { checkAuthToken, validateTenant } from "../middleware/auth";
+import { lookupBigQueryConnection } from "../middleware/connectionLookup";
 import {
   // Audience endpoints
   createAudience,
@@ -67,8 +68,8 @@ router.get("/cohorts", getCohortsByTenant); // Can be filtered by audienceId or 
 router.put("/cohorts/:id", updateCohort);
 router.delete("/cohorts/:id", deleteCohort);
 
-// Cohort data routes
-router.get("/cohorts/:id/preview", previewCohortData);
+// Cohort data routes (require BigQuery connection)
+router.get("/cohorts/:id/preview", lookupBigQueryConnection, previewCohortData);
 // router.get('/cohorts/:id/counts', getCohortCounts);
 router.get("/cohorts/:id/download", downloadCohortData);
 router.get("/cohorts/:id/sql", generateCohortSQL);
@@ -76,10 +77,10 @@ router.get("/cohorts/:id/sql", generateCohortSQL);
 // Alternative cohort routes by audience
 router.get("/audiences/:audienceId/cohorts", getCohortsByAudience);
 
-// Real-time filter endpoints
-router.post("/filters/counts", getFilterCounts);
-router.post("/filters/preview", previewFilterData);
-router.post("/filters/get-preview", getFilterPreveiwData);
+// Real-time filter endpoints (require BigQuery connection)
+router.post("/filters/counts", lookupBigQueryConnection, getFilterCounts);
+router.post("/filters/preview", lookupBigQueryConnection, previewFilterData);
+router.post("/filters/get-preview", lookupBigQueryConnection, getFilterPreveiwData);
 
 // Utility routes
 router.get("/objects", getAllObjects);
@@ -90,11 +91,12 @@ router.get("/objects/:objectId/fields", getObjectFields);
 router.get("/objects/:objectId/display-fields", getObjectDisplayFields);
 router.get(
   "/objects/:objectId/fields/:fieldName/values",
+  lookupBigQueryConnection,
   getFieldDistinctValues
 );
 router.put("/objects/:objectId/fields", updateObjectFields);
 
-// Audience data routes
-router.get("/audiences/:id/objects/:objectId/data", getAudienceObjectData);
+// Audience data routes (require BigQuery connection)
+router.get("/audiences/:id/objects/:objectId/data", lookupBigQueryConnection, getAudienceObjectData);
 
 export default router;

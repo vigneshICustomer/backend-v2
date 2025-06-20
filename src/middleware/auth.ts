@@ -10,15 +10,15 @@ import { AuthenticatedRequest, User, UserSession } from '../types/api';
 /**
  * Generate API key for user
  */
-export const generateApiKey = (length: number = 32): string => {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let apiKey = '';
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    apiKey += characters[randomIndex];
-  }
-  return apiKey;
-};
+// export const generateApiKey = (length: number = 32): string => {
+//   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+//   let apiKey = '';
+//   for (let i = 0; i < length; i++) {
+//     const randomIndex = Math.floor(Math.random() * characters.length);
+//     apiKey += characters[randomIndex];
+//   }
+//   return apiKey;
+// };
 
 /**
  * Middleware to check JWT and session tokens
@@ -80,82 +80,82 @@ export const checkAuthToken = catchAsync(async (req: AuthenticatedRequest, res: 
 /**
  * Middleware to get or generate API key for user
  */
-export const getAPIkey = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+// export const getAPIkey = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+//   const authHeader = req.headers.authorization;
+//   const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) {
-    throw ApiError.unauthorized('Missing Token');
-  }
+//   if (!token) {
+//     throw ApiError.unauthorized('Missing Token');
+//   }
 
-  try {
-    const decoded = jwt.verify(token, environment.JWT_SECRET_KEY) as any;
+//   try {
+//     const decoded = jwt.verify(token, environment.JWT_SECRET_KEY) as any;
 
-    // Check if user already has an API key
-    const apiKeyQuery = `
-      SELECT ${userAuthTable.oauth_token} 
-      FROM ${userAuthTable.schemaTableName} 
-      WHERE ${userAuthTable.user_id} = $1
-    `;
+//     // Check if user already has an API key
+//     const apiKeyQuery = `
+//       SELECT ${userAuthTable.oauth_token} 
+//       FROM ${userAuthTable.schemaTableName} 
+//       WHERE ${userAuthTable.user_id} = $1
+//     `;
     
-    const result = await connection.query(apiKeyQuery, [decoded.id]);
+//     const result = await connection.query(apiKeyQuery, [decoded.id]);
 
-    let apiKey = result.rows[0]?.oauth_token;
+//     let apiKey = result.rows[0]?.oauth_token;
     
-    if (!apiKey) {
-      // Generate new API key
-      apiKey = generateApiKey(32);
+//     if (!apiKey) {
+//       // Generate new API key
+//       apiKey = generateApiKey(32);
 
-      // Insert new API key record
-      const insertQuery = `
-        INSERT INTO ${userAuthTable.schemaTableName} 
-        (${userAuthTable.user_id}, ${userAuthTable.oauth_token}, ${userAuthTable.allotedcredits}, ${userAuthTable.remaining_credits}) 
-        VALUES ($1, $2, $3, $4)
-      `;
+//       // Insert new API key record
+//       const insertQuery = `
+//         INSERT INTO ${userAuthTable.schemaTableName} 
+//         (${userAuthTable.user_id}, ${userAuthTable.oauth_token}, ${userAuthTable.allotedcredits}, ${userAuthTable.remaining_credits}) 
+//         VALUES ($1, $2, $3, $4)
+//       `;
       
-      await connection.query(insertQuery, [decoded.id, apiKey, 10000, 10000]);
-    }
+//       await connection.query(insertQuery, [decoded.id, apiKey, 10000, 10000]);
+//     }
 
-    req.apiKey = apiKey;
-    next();
-  } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      return next(ApiError.forbidden('Invalid token'));
-    }
-    return next(ApiError.internal('Database error occurred'));
-  }
-});
+//     req.apiKey = apiKey;
+//     next();
+//   } catch (error) {
+//     if (error instanceof jwt.JsonWebTokenError) {
+//       return next(ApiError.forbidden('Invalid token'));
+//     }
+//     return next(ApiError.internal('Database error occurred'));
+//   }
+// });
 
 /**
  * Middleware to check if user is organization admin
  */
-export const isOrganisationAdmin = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  if (!req.user) {
-    throw ApiError.unauthorized('User not authenticated');
-  }
+// export const isOrganisationAdmin = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+//   if (!req.user) {
+//     throw ApiError.unauthorized('User not authenticated');
+//   }
 
-  // Check if user is admin or super admin
-  if (req.user.role === 'Admin' || req.user.is_super_admin) {
-    return next();
-  }
+//   // Check if user is admin or super admin
+//   if (req.user.role === 'Admin' || req.user.is_super_admin) {
+//     return next();
+//   }
 
-  throw ApiError.forbidden('Insufficient permissions - Admin access required');
-});
+//   throw ApiError.forbidden('Insufficient permissions - Admin access required');
+// });
 
 /**
  * Middleware to check if user is super admin
  */
-export const isSuperAdmin = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  if (!req.user) {
-    throw ApiError.unauthorized('User not authenticated');
-  }
+// export const isSuperAdmin = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+//   if (!req.user) {
+//     throw ApiError.unauthorized('User not authenticated');
+//   }
 
-  if (!req.user.is_super_admin) {
-    throw ApiError.forbidden('Insufficient permissions - Super Admin access required');
-  }
+//   if (!req.user.is_super_admin) {
+//     throw ApiError.forbidden('Insufficient permissions - Super Admin access required');
+//   }
 
-  next();
-});
+//   next();
+// });
 
 /**
  * Generate session token

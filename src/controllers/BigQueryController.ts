@@ -39,102 +39,133 @@ export const createConnection = catchAsync(async (req: AuthenticatedRequest, res
 
 /**
  * Validate a BigQuery connection
- * @route POST /api/bigquery/connections/:id/validate
+ * @route POST /api/bigquery/connections/validate
  */
 export const validateConnection = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const connectionId = req.bigQueryConnection?.id;
+  
+  if (!connectionId) {
+    throw ApiError.badRequest('BigQuery connection not found');
+  }
   
   // Validate connection
-  const isValid = await BigQueryService.validateConnection(id);
+  const isValid = await BigQueryService.validateConnection(connectionId);
   
   res.status(200).json({
     status: 'success',
     data: {
-      valid: isValid
+      valid: isValid,
+      connection: req.bigQueryConnection
     }
   });
 });
 
 /**
  * List datasets in a BigQuery connection
- * @route GET /api/bigquery/connections/:id/datasets
+ * @route GET /api/bigquery/datasets
  */
 export const listDatasets = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const connectionId = req.bigQueryConnection?.id;
+  
+  if (!connectionId) {
+    throw ApiError.badRequest('BigQuery connection not found');
+  }
   
   // List datasets
-  const datasets = await BigQueryService.listDatasets(id);
+  const datasets = await BigQueryService.listDatasets(connectionId);
   
   res.status(200).json({
     status: 'success',
     data: {
-      datasets
+      datasets,
+      connection: req.bigQueryConnection
     }
   });
 });
 
 /**
  * List tables in a BigQuery dataset
- * @route GET /api/bigquery/connections/:id/datasets/:datasetId/tables
+ * @route GET /api/bigquery/datasets/:datasetId/tables
  */
 export const listTables = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const { id, datasetId } = req.params;
+  const connectionId = req.bigQueryConnection?.id;
+  const { datasetId } = req.params;
+  
+  if (!connectionId) {
+    throw ApiError.badRequest('BigQuery connection not found');
+  }
   
   // List tables
-  const tables = await BigQueryService.listTables(id, datasetId);
+  const tables = await BigQueryService.listTables(connectionId, datasetId);
   
   res.status(200).json({
     status: 'success',
     data: {
-      tables
+      tables,
+      connection: req.bigQueryConnection
     }
   });
 });
 
 /**
  * Get table schema
- * @route GET /api/bigquery/connections/:id/datasets/:datasetId/tables/:tableId/schema
+ * @route GET /api/bigquery/datasets/:datasetId/tables/:tableId/schema
  */
 export const getTableSchema = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const { id, datasetId, tableId } = req.params;
+  const connectionId = req.bigQueryConnection?.id;
+  const { datasetId, tableId } = req.params;
+  
+  if (!connectionId) {
+    throw ApiError.badRequest('BigQuery connection not found');
+  }
   
   // Get table schema
-  const schema = await BigQueryService.getTableSchema(id, datasetId, tableId);
+  const schema = await BigQueryService.getTableSchema(connectionId, datasetId, tableId);
   
   res.status(200).json({
     status: 'success',
     data: {
-      schema
+      schema,
+      connection: req.bigQueryConnection
     }
   });
 });
 
 /**
  * Execute a query
- * @route POST /api/bigquery/connections/:id/query
+ * @route POST /api/bigquery/query
  */
 export const executeQuery = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const connectionId = req.bigQueryConnection?.id;
   const { query, params } = req.body;
   
+  if (!connectionId) {
+    throw ApiError.badRequest('BigQuery connection not found');
+  }
+  
   // Execute query
-  const results = await BigQueryService.executeQuery(id, query, params);
+  const results = await BigQueryService.executeQuery(connectionId, query, params);
   
   res.status(200).json({
     status: 'success',
     data: {
-      results
+      results,
+      connection: req.bigQueryConnection
     }
   });
 });
 
 /**
  * Get schemas from specific datasets
- * @route POST /api/bigquery/connections/:id/schemas
+ * @route POST /api/bigquery/schemas
  */
 export const getSchemasFromDatasets = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const connectionId = req.bigQueryConnection?.id;
   const { datasets } = req.body;
+  
+  if (!connectionId) {
+    throw ApiError.badRequest('BigQuery connection not found');
+  }
   
   // Validate input
   if (!datasets || !Array.isArray(datasets) || datasets.length === 0) {
@@ -142,11 +173,14 @@ export const getSchemasFromDatasets = catchAsync(async (req: AuthenticatedReques
   }
   
   // Get schemas from specified datasets
-  const schemas = await BigQueryService.getSchemasFromDatasets(id, datasets);
+  const schemas = await BigQueryService.getSchemasFromDatasets(connectionId, datasets);
   
   res.status(200).json({
     status: 'success',
-    data: schemas
+    data: {
+      ...schemas,
+      connection: req.bigQueryConnection
+    }
   });
 });
 

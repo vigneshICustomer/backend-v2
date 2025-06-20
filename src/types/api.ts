@@ -13,6 +13,18 @@ export interface AuthenticatedRequest extends Request {
   user?: User;
   apiKey?: string;
   tenantId?: string;
+  bigQueryConnection?: {
+    id: string;
+    name: string;
+    type: string;
+    status: string;
+  };
+  connectionInfo?: {
+    id: string;
+    name: string;
+    type: string;
+    status: string;
+  };
 }
 
 // User interface

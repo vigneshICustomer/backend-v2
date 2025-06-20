@@ -6,6 +6,7 @@ import {
   timestamp,
   text,
   jsonb,
+  index,
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
@@ -21,12 +22,17 @@ export const objects = schema.table("objects", {
   displayName: varchar("display_name", { length: 128 }).notNull(), // e.g., 'Companies', 'Contacts'
   description: text("description"),
   bigqueryTable: varchar("bigquery_table", { length: 256 }), // BigQuery table reference
+  organisationId: varchar("organisation_id", { length: 255 }).notNull(), // Organisation/tenant ID
 
   // Field configurations for UI - stores available fields, their types, and filter options
   fields: jsonb("fields").default("[]"), // Array of field configurations
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => {
+  return {
+    organisationIdIdx: index('idx_objects_organisation_id').on(table.organisationId),
+  };
 });
 
 // Relationships table - defines how objects can be joined

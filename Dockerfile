@@ -39,6 +39,9 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
+# Copy templates directory to the correct location
+COPY --from=builder /app/src/templates ./dist/templates
+
 # Copy any additional files needed at runtime (if they exist)
 RUN mkdir -p ./public
 

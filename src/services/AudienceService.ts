@@ -79,8 +79,8 @@ export class AudienceService {
 
 
   // Objects and relationships
-  async getAllObjects(): Promise<Object[]> {
-    return await audienceStorage.getAllObjects();
+  async getAllObjects(organisationId?: string): Promise<Object[]> {
+    return await audienceStorage.getAllObjects(organisationId);
   }
 
   async getAllRelationships(): Promise<Relationship[]> {
@@ -95,14 +95,14 @@ export class AudienceService {
     return await audienceStorage.getObjectDisplayFields(objectId);
   }
 
-  async getFilterValuesForAudienceField(objectId: number, fieldName: string, limit: number = 100): Promise<string[]> {
+  async getFilterValuesForAudienceField(objectId: number, fieldName: string, connectionId: string, limit: number = 100): Promise<string[]> {
     const object = await audienceStorage.findObjectById(objectId);
     if (!object) {
       throw new Error('Object not found');
     }
 
     try {
-      const response = await this.bigQueryAdapter.getFieldDistinctValues('4fc75b9b-8946-4b32-bdd5-9d2a876b7ad1', object, fieldName)
+      const response = await this.bigQueryAdapter.getFieldDistinctValues(connectionId, object, fieldName)
       console.log({response});
       return response;
     } catch (error) {
@@ -184,7 +184,7 @@ export class AudienceService {
   /**
    * Get audience object data (preview from BigQuery)
    */
-  async getAudienceObjectData(audienceId: string, objectId: number, limit: number = 100): Promise<any[]> {
+  async getAudienceObjectData(audienceId: string, objectId: number, connectionId: string, limit: number = 100): Promise<any[]> {
     const audience = await audienceStorage.findAudienceById(audienceId);
     if (!audience) {
       throw new Error('Audience not found');
@@ -195,7 +195,7 @@ export class AudienceService {
       throw new Error('Object not found');
     }
 
-    const response = await this.bigQueryAdapter.getObjectData('4fc75b9b-8946-4b32-bdd5-9d2a876b7ad1', object, limit)
+    const response = await this.bigQueryAdapter.getObjectData(connectionId, object, limit)
 
     return response
   }
