@@ -246,7 +246,7 @@ const startServer = async () => {
     console.log("Database initialized successfully");
 
     // Start server
-    const PORT = environment.PORT;
+    const PORT = 3001;
     app.listen(PORT, () => {
       console.log(`🚀 V2 Backend server started on port ${PORT}`);
       console.log(`📊 Environment: ${environment.NODE_ENV}`);

@@ -1,5 +1,6 @@
 import { userStorage } from '../storage/userStorage';
 import ApiError from '../utils/ApiError';
+import { EmailService } from './EmailService';
 import type { User } from '../types/api';
 
 /**
@@ -117,13 +118,38 @@ export class UserSettingsService {
         invitations.push(invitation);
       }
 
-      // TODO: Send invitation emails (implement email service)
-      // For now, we'll just return success
-      
-      return {
-        status: 'success',
-        data: 'User invited successfully'
-      };
+      // Send invitation emails
+      const emailInvitationMap = invitations.map(invitation => ({
+        email: invitation.email,
+        invitation_id: invitation.invitation_id
+      }));
+
+      try {
+        const mailResponses = await EmailService.sendMultipleInvites(emailInvitationMap, invited_by);
+        
+        // Check if all emails were sent successfully
+        const successfulSends = mailResponses.filter(response => !response.error);
+        
+        if (successfulSends.length === emailInvitationMap.length) {
+          return {
+            status: 'success',
+            data: 'User invited successfully'
+          };
+        } else {
+          return {
+            status: 'partial_success',
+            data: `${successfulSends.length} out of ${emailInvitationMap.length} invitations sent successfully`
+          };
+        }
+      } catch (emailError) {
+        console.error('Error sending invitation emails:', emailError);
+        // Even if email fails, invitations are created in database
+        return {
+          status: 'success',
+          data: 'Invitations created but email sending failed. Please check email configuration.',
+          warning: 'Email service unavailable'
+        };
+      }
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;

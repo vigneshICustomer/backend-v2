@@ -116,3 +116,40 @@ export const persistSession = catchAsync(async (req: Request, res: Response) => 
   
   res.status(result.statusCode || 200).json(result);
 });
+
+/**
+ * Validate invitation
+ * POST /auth/validate-invitation
+ */
+export const validateInvitation = catchAsync(async (req: Request, res: Response) => {
+  const { invitation_id } = req.body;
+  
+  if (!invitation_id) {
+    throw ApiError.badRequest('Invitation ID is required');
+  }
+
+  const result = await AuthService.validateInvitation(invitation_id);
+  
+  res.status(200).json(result);
+});
+
+/**
+ * Google signup with invitation
+ * POST /auth/google-signup
+ */
+export const googleSignup = catchAsync(async (req: Request, res: Response) => {
+  const data = req.body;
+  const ip = getClientIP(req);
+  
+  // Validate required fields
+  const requiredFields = ['email', 'username', 'googleID', 'name', 'inviteID'];
+  for (const field of requiredFields) {
+    if (!data[field]) {
+      throw ApiError.badRequest(`${field} is required`);
+    }
+  }
+
+  const result = await AuthService.googleSignupWithInvitation(data, ip);
+  
+  res.status(200).json(result);
+});

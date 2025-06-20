@@ -5,7 +5,9 @@ import {
   loginJWT,
   logout,
   googleLoginJWT,
-  persistSession
+  persistSession,
+  validateInvitation,
+  googleSignup
 } from '../controllers/auth/authController';
 import { 
   authRateLimit, 
@@ -31,5 +33,9 @@ router.post('/users/googleLoginJWT', authRateLimit, googleLoginJWT);
 
 // Session management
 router.get('/session/persist', persistSession);
+
+// Invitation routes
+router.post('/auth/validate-invitation', validateInvitation);
+router.post('/auth/google-signup', authRateLimit, googleSignup);
 
 export default router;

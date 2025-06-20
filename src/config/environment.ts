@@ -15,6 +15,16 @@ const environment: any = {
   // JWT Configuration
   JWT_SECRET_KEY: process.env.JWT_SECRET_KEY!,
 
+  // Email Configuration
+  EMAIL_USER: process.env.EMAIL_USER,
+  EMAIL_PASSWORD: process.env.EMAIL_PASSWORD!,
+
+  // Frontend URLs
+  FRONTEND_URL: process.env.FRONTEND_URL,
+  
+  // Email Logo URL
+  EMAIL_LOGO_URL: process.env.LOGO_URL,
+
   // Rate Limiting
   RATE_LIMIT_COUNT: parseInt(process.env.RATE_LIMIT_COUNT || "100", 10),
 
