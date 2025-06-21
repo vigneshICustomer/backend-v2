@@ -193,13 +193,15 @@ export const audienceStorage = {
 
   async findCohortsByTenant(tenantId: string): Promise<any> {
     return await db.execute(sql`
-    SELECT 
-      c.*, 
-      u.name AS "createdByName"
-    FROM audience_hub.cohorts c
-    LEFT JOIN dev.users u ON c.created_by = u.id::text
-    WHERE c.tenant_id = ${tenantId}
-    ORDER BY c.created_at DESC
+      SELECT 
+        c.*, 
+        a.name AS "audience_name", 
+        u.name AS "created_by_name"
+      FROM audience_hub.cohorts c
+      LEFT JOIN audience_hub.audiences a ON c.audience_id = a.id
+      LEFT JOIN dev.users u ON c.created_by = u.id::text
+      WHERE c.tenant_id = ${tenantId}
+      ORDER BY c.created_at DESC;
   `);
   },
 
