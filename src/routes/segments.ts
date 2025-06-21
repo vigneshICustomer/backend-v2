@@ -12,9 +12,7 @@ import {
   getUserFilters,
   deleteUserFilter
 } from '../controllers/segments/segmentController';
-import { 
-  checkAuthToken
-} from '../middleware/rateLimiter';
+import { checkAuthToken } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -29,7 +27,7 @@ router.post('/audience/fetch-segments-modelId', fetchSegmentsByModelId);
 router.get('/audience/folders', getFolders);
 router.post('/audience/folders', createFolder);
 router.post('/segment/save-segment-data', saveSegmentData);
-router.post('/integration/integrationList', checkAuthToken, getUserIntegrations);
+router.post('/integration/integrationList', checkAuthToken(), getUserIntegrations);
 router.post('/segment/segment-filter-criteria', getSegmentFilterCriteria);
 router.post('/audience/segment-filter-criteria-count', getSegmentFilterCriteriaCount);
 

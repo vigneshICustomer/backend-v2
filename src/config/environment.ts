@@ -16,14 +16,16 @@ const environment: any = {
   JWT_SECRET_KEY: process.env.JWT_SECRET_KEY!,
 
   // Email Configuration
-  EMAIL_USER: process.env.EMAIL_USER,
+  EMAIL_USER: process.env.EMAIL_USER || "noreply@icustomer.ai",
   EMAIL_PASSWORD: process.env.EMAIL_PASSWORD!,
 
   // Frontend URLs
-  FRONTEND_URL: process.env.FRONTEND_URL,
+  FRONTEND_URL: process.env.NODE_ENV === "production" 
+    ? "https://app.icustomer.ai" 
+    : (process.env.FRONTEND_URL || "http://localhost:3000"),
   
   // Email Logo URL
-  EMAIL_LOGO_URL: process.env.LOGO_URL,
+  EMAIL_LOGO_URL: process.env.EMAIL_LOGO_URL || process.env.LOGO_URL || "https://icustomer.s3.eu-north-1.amazonaws.com/iCustomer-logo.png",
 
   // Rate Limiting
   RATE_LIMIT_COUNT: parseInt(process.env.RATE_LIMIT_COUNT || "100", 10),

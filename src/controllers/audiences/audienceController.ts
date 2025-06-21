@@ -1,5 +1,6 @@
 import { organisations } from "./../../db/schema/users";
 import { Request, Response } from "express";
+import { AuthenticatedRequest } from "../../types/api";
 import AudienceService from "../../services/AudienceService";
 import CohortService from "../../services/CohortService";
 import catchAsync from "../../utils/catchAsync";
@@ -327,12 +328,19 @@ export const deleteCohort = catchAsync(async (req: Request, res: Response) => {
  * Preview cohort data
  */
 export const previewCohortData = catchAsync(
-  async (req: Request, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
     const { limit = 100 } = req.query;
 
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
+    if (!connectionId) {
+      throw new ApiError(400, "Source connection not found");
+    }
+
     const data = await cohortService.previewCohortData(
       id,
+      connectionId,
       parseInt(limit as string)
     );
 
@@ -386,7 +394,10 @@ export const downloadCohortData = catchAsync(
  * Get all available objects
  */
 export const getAllObjects = catchAsync(async (req: Request, res: Response) => {
-  const objects = await audienceService.getAllObjects();
+  // Get organisation_id from authenticated user or tenant header
+  const organisationId = req.user?.organisation_id || req.tenantId || req.headers['x-tenant-id'] as string;
+  
+  const objects = await audienceService.getAllObjects(organisationId);
 
   res.status(200).json({
     success: true,
@@ -458,7 +469,7 @@ export const getObjectDisplayFields = catchAsync(
  * Get distinct values for a field
  */
 export const getFieldDistinctValues = catchAsync(
-  async (req: Request, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     const { objectId, fieldName } = req.params;
     const { limit = 100 } = req.query;
 
@@ -466,9 +477,16 @@ export const getFieldDistinctValues = catchAsync(
       throw new ApiError(400, "objectId and fieldName are required");
     }
 
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
+    if (!connectionId) {
+      throw new ApiError(400, "Source connection not found");
+    }
+
     const values = await audienceService.getFilterValuesForAudienceField(
       parseInt(objectId),
       fieldName,
+      connectionId,
       parseInt(limit as string)
     );
 
@@ -500,7 +518,7 @@ export const generateCohortSQL = catchAsync(
  * Get real-time cohort counts based on filter criteria (without creating a cohort)
  */
 export const getFilterCounts = catchAsync(
-  async (req: Request, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     const { audienceId, companyFilters = [], contactFilters = [] } = req.body;
 
     if (!audienceId) {
@@ -514,12 +532,18 @@ export const getFilterCounts = catchAsync(
       );
     }
 
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
+    if (!connectionId) {
+      throw new ApiError(400, "Source connection not found");
+    }
+
     const filters = {
       companyFilters,
       contactFilters,
     };
 
-    const counts = await cohortService.getFilterCounts(audienceId, filters);
+    const counts = await cohortService.getFilterCounts(audienceId, filters, connectionId);
 
     res.status(200).json({
       success: true,
@@ -529,7 +553,7 @@ export const getFilterCounts = catchAsync(
 );
 
 export const getFilterPreveiwData = catchAsync(
-  async (req: Request, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     const { audienceId, companyFilters = [], contactFilters = [] } = req.body;
 
     if (!audienceId) {
@@ -543,6 +567,12 @@ export const getFilterPreveiwData = catchAsync(
       );
     }
 
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
+    if (!connectionId) {
+      throw new ApiError(400, "Source connection not found");
+    }
+
     const filters = {
       companyFilters,
       contactFilters,
@@ -550,7 +580,8 @@ export const getFilterPreveiwData = catchAsync(
 
     const counts = await cohortService.getFilterPreveiwData(
       audienceId,
-      filters
+      filters,
+      connectionId
     );
 
     res.status(200).json({
@@ -564,7 +595,7 @@ export const getFilterPreveiwData = catchAsync(
  * Preview data based on filter criteria (without creating a cohort)
  */
 export const previewFilterData = catchAsync(
-  async (req: Request, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     const {
       audienceId,
       companyFilters = [],
@@ -583,6 +614,12 @@ export const previewFilterData = catchAsync(
       );
     }
 
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
+    if (!connectionId) {
+      throw new ApiError(400, "Source connection not found");
+    }
+
     const filters = {
       companyFilters,
       contactFilters,
@@ -591,6 +628,7 @@ export const previewFilterData = catchAsync(
     const data = await cohortService.previewFilterData(
       audienceId,
       filters,
+      connectionId,
       parseInt(limit as string)
     );
 
@@ -606,7 +644,7 @@ export const previewFilterData = catchAsync(
  * Get audience object data (preview from BigQuery)
  */
 export const getAudienceObjectData = catchAsync(
-  async (req: Request, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     const { id: audienceId, objectId } = req.params;
     const { limit = 50 } = req.query;
 
@@ -614,9 +652,16 @@ export const getAudienceObjectData = catchAsync(
       throw new ApiError(400, "objectId is required");
     }
 
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
+    if (!connectionId) {
+      throw new ApiError(400, "Source connection not found");
+    }
+
     const data = await audienceService.getAudienceObjectData(
       audienceId,
       parseInt(objectId as string),
+      connectionId,
       parseInt(limit as string)
     );
 

@@ -221,35 +221,6 @@ export const getClientIP = (req: Request): string => {
   ) as string;
 };
 
-/**
- * Check authentication token middleware
- */
-export const checkAuthToken = async (req: any, res: Response, next: any): Promise<void> => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (!token) {
-      res.status(401).json({
-        status: 'error',
-        message: 'Access token is required'
-      });
-      return;
-    }
-
-    // Verify JWT token and extract user info
-    const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, environment.JWT_SECRET_KEY);
-    req.user = decoded;
-    
-    next();
-  } catch (error) {
-    res.status(401).json({
-      status: 'error',
-      message: 'Invalid or expired token'
-    });
-  }
-};
 
 /**
  * Get API key middleware for enrichment endpoints

@@ -133,7 +133,7 @@ app.use("/enrichTemplate", enrichTemplateRoutes);
 app.use("/champion", championRoutes);
 app.use("/api/bigquery", bigQueryRoutes);
 app.use("/debug", testConnectionsRoutes);
-app.use("/api", checkAuthToken, audienceRoutes);
+app.use("/api", checkAuthToken(), audienceRoutes);
 
 // API documentation endpoint
 app.get("/api-docs", (req, res) => {

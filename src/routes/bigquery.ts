@@ -1,53 +1,57 @@
 import { Router } from 'express';
 import { uploadJsonFile } from '../utils/fileUpload';
-import { validateTenant } from '../middleware/auth';
+import { checkAuthToken } from '../middleware/auth';
 import BigQueryController from '../controllers/BigQueryController';
 
 const router = Router();
 
-// Apply tenant validation middleware to all routes
-router.use(validateTenant);
-
-// Create a new BigQuery connection
+// Create a new BigQuery connection (requires tenant validation)
 router.post(
   '/connections',
+  checkAuthToken({ requireTenant: true }),
   uploadJsonFile.single('credentials'),
   BigQueryController.createConnection
 );
 
-// Validate a BigQuery connection
+// Validate a BigQuery connection (requires source connection)
 router.post(
-  '/connections/:id/validate',
+  '/connections/validate',
+  checkAuthToken({ requireSource: true }),
   BigQueryController.validateConnection
 );
 
-// List datasets in a BigQuery connection
+// List datasets in a BigQuery connection (requires source connection)
 router.get(
-  '/connections/:id/datasets',
+  '/datasets',
+  checkAuthToken({ requireSource: true }),
   BigQueryController.listDatasets
 );
 
-// List tables in a BigQuery dataset
+// List tables in a BigQuery dataset (requires source connection)
 router.get(
-  '/connections/:id/datasets/:datasetId/tables',
+  '/datasets/:datasetId/tables',
+  checkAuthToken({ requireSource: true }),
   BigQueryController.listTables
 );
 
-// Get table schema
+// Get table schema (requires source connection)
 router.get(
-  '/connections/:id/datasets/:datasetId/tables/:tableId/schema',
+  '/datasets/:datasetId/tables/:tableId/schema',
+  checkAuthToken({ requireSource: true }),
   BigQueryController.getTableSchema
 );
 
-// Execute a query
+// Execute a query (requires source connection)
 router.post(
-  '/connections/:id/query',
+  '/query',
+  checkAuthToken({ requireSource: true }),
   BigQueryController.executeQuery
 );
 
-// Get schemas from specific datasets
+// Get schemas from specific datasets (requires source connection)
 router.post(
-  '/connections/:id/schemas',
+  '/schemas',
+  checkAuthToken({ requireSource: true }),
   BigQueryController.getSchemasFromDatasets
 );
 

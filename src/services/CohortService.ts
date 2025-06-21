@@ -88,6 +88,7 @@ export class CohortService {
   // Cohort data operations
   async previewCohortData(
     cohortId: string,
+    connectionId: string,
     limit: number = 100
   ): Promise<any[]> {
     const cohort = await audienceStorage.findCohortById(cohortId);
@@ -105,7 +106,7 @@ export class CohortService {
       filters,
       audienceConfig,
       limit,
-      "4fc75b9b-8946-4b32-bdd5-9d2a876b7ad1"
+      connectionId
     );
   }
 
@@ -172,7 +173,8 @@ export class CohortService {
   // Real-time filter operations (without creating a cohort)
   async getFilterCounts(
     audienceId: string,
-    filters: CohortFilters
+    filters: CohortFilters,
+    connectionId: string
   ): Promise<{ companyCount: number; peopleCount: number }> {
     // Get audience configuration
     const audienceConfig = await this.getAudienceConfiguration(audienceId);
@@ -181,14 +183,15 @@ export class CohortService {
     return await this.bigQueryAdapter.getCohortCountsWithConfig(
       filters,
       audienceConfig,
-      "4fc75b9b-8946-4b32-bdd5-9d2a876b7ad1"
+      connectionId
     );
   }
 
   // Fetch sample filter operations (without creating a cohort)
   async getFilterPreveiwData(
     audienceId: string,
-    filters: CohortFilters
+    filters: CohortFilters,
+    connectionId: string
   ): Promise<{
     companyPreview: any;
     contactPreview: any;
@@ -200,13 +203,14 @@ export class CohortService {
     return await this.bigQueryAdapter.getCohortPreviewWithConfig(
       filters,
       audienceConfig,
-      "4fc75b9b-8946-4b32-bdd5-9d2a876b7ad1"
+      connectionId
     );
   }
 
   async previewFilterData(
     audienceId: string,
     filters: CohortFilters,
+    connectionId: string,
     limit: number = 100
   ): Promise<any[]> {
     // Get audience configuration
@@ -216,7 +220,7 @@ export class CohortService {
       filters,
       audienceConfig,
       limit,
-      "4fc75b9b-8946-4b32-bdd5-9d2a876b7ad1"
+      connectionId
     );
   }
 

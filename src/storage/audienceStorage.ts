@@ -107,11 +107,27 @@ export const audienceStorage = {
   },
 
   // Objects operations
-  async getAllObjects(): Promise<Object[]> {
+  async getAllObjects(organisationId?: string): Promise<Object[]> {
+    if (organisationId) {
+      return await db
+        .select()
+        .from(objects)
+        .where(eq(objects.organisationId, organisationId))
+        .orderBy(objects.displayName);
+    }
     return await db.select().from(objects).orderBy(objects.displayName);
   },
 
-  async findObjectById(id: number): Promise<Object | null> {
+  async findObjectById(id: number, organisationId?: string): Promise<Object | null> {
+    if (organisationId) {
+      const result = await db
+        .select()
+        .from(objects)
+        .where(and(eq(objects.id, id), eq(objects.organisationId, organisationId)))
+        .limit(1);
+      return result[0] || null;
+    }
+    
     const result = await db
       .select()
       .from(objects)

@@ -10,7 +10,7 @@ const router = express.Router();
  */
 
 // Apply authentication middleware
-router.use(checkAuthToken);
+router.use(checkAuthToken());
 
 // Apply rate limiting
 router.use(generalRateLimit);

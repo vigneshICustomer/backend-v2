@@ -26,7 +26,7 @@ const router = express.Router();
 router.post('/readLogo', generalRateLimit, readLogo);
 
 // Apply authentication middleware to protected routes
-router.use(checkAuthToken);
+router.use(checkAuthToken());
 
 // Apply rate limiting to protected routes
 router.use(generalRateLimit);
