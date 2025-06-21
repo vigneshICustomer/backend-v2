@@ -11,9 +11,9 @@ import {
 } from '../controllers/insights/insightsController';
 import { 
   authRateLimit,
-  checkAuthToken,
   getAPIkey
 } from '../middleware/rateLimiter';
+import { checkAuthToken } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -23,7 +23,7 @@ const router = express.Router();
  */
 
 // Insights & Analytics Endpoints
-router.post('/insights/getPicklistValues', checkAuthToken, getPicklistValues);
+router.post('/insights/getPicklistValues', checkAuthToken(), getPicklistValues);
 router.post('/insightsRoutes/getColumns', getColumns);
 router.post('/insightsRoutes/liveTable', liveTable);
 router.post('/insightsRoutes/displayTable', displayTable);

@@ -42,10 +42,10 @@ export const createConnection = catchAsync(async (req: AuthenticatedRequest, res
  * @route POST /api/bigquery/connections/validate
  */
 export const validateConnection = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const connectionId = req.bigQueryConnection?.id;
+  const connectionId = req.sourceConnection?.id;
   
   if (!connectionId) {
-    throw ApiError.badRequest('BigQuery connection not found');
+    throw ApiError.badRequest('Source connection not found');
   }
   
   // Validate connection
@@ -55,7 +55,7 @@ export const validateConnection = catchAsync(async (req: AuthenticatedRequest, r
     status: 'success',
     data: {
       valid: isValid,
-      connection: req.bigQueryConnection
+      connection: req.sourceConnection
     }
   });
 });
@@ -65,10 +65,10 @@ export const validateConnection = catchAsync(async (req: AuthenticatedRequest, r
  * @route GET /api/bigquery/datasets
  */
 export const listDatasets = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const connectionId = req.bigQueryConnection?.id;
+  const connectionId = req.sourceConnection?.id;
   
   if (!connectionId) {
-    throw ApiError.badRequest('BigQuery connection not found');
+    throw ApiError.badRequest('Source connection not found');
   }
   
   // List datasets
@@ -78,7 +78,7 @@ export const listDatasets = catchAsync(async (req: AuthenticatedRequest, res: Re
     status: 'success',
     data: {
       datasets,
-      connection: req.bigQueryConnection
+      connection: req.sourceConnection
     }
   });
 });
@@ -88,11 +88,11 @@ export const listDatasets = catchAsync(async (req: AuthenticatedRequest, res: Re
  * @route GET /api/bigquery/datasets/:datasetId/tables
  */
 export const listTables = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const connectionId = req.bigQueryConnection?.id;
+  const connectionId = req.sourceConnection?.id;
   const { datasetId } = req.params;
   
   if (!connectionId) {
-    throw ApiError.badRequest('BigQuery connection not found');
+    throw ApiError.badRequest('Source connection not found');
   }
   
   // List tables
@@ -102,7 +102,7 @@ export const listTables = catchAsync(async (req: AuthenticatedRequest, res: Resp
     status: 'success',
     data: {
       tables,
-      connection: req.bigQueryConnection
+      connection: req.sourceConnection
     }
   });
 });
@@ -112,11 +112,11 @@ export const listTables = catchAsync(async (req: AuthenticatedRequest, res: Resp
  * @route GET /api/bigquery/datasets/:datasetId/tables/:tableId/schema
  */
 export const getTableSchema = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const connectionId = req.bigQueryConnection?.id;
+  const connectionId = req.sourceConnection?.id;
   const { datasetId, tableId } = req.params;
   
   if (!connectionId) {
-    throw ApiError.badRequest('BigQuery connection not found');
+    throw ApiError.badRequest('Source connection not found');
   }
   
   // Get table schema
@@ -126,7 +126,7 @@ export const getTableSchema = catchAsync(async (req: AuthenticatedRequest, res: 
     status: 'success',
     data: {
       schema,
-      connection: req.bigQueryConnection
+      connection: req.sourceConnection
     }
   });
 });
@@ -136,11 +136,11 @@ export const getTableSchema = catchAsync(async (req: AuthenticatedRequest, res: 
  * @route POST /api/bigquery/query
  */
 export const executeQuery = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const connectionId = req.bigQueryConnection?.id;
+  const connectionId = req.sourceConnection?.id;
   const { query, params } = req.body;
   
   if (!connectionId) {
-    throw ApiError.badRequest('BigQuery connection not found');
+    throw ApiError.badRequest('Source connection not found');
   }
   
   // Execute query
@@ -150,7 +150,7 @@ export const executeQuery = catchAsync(async (req: AuthenticatedRequest, res: Re
     status: 'success',
     data: {
       results,
-      connection: req.bigQueryConnection
+      connection: req.sourceConnection
     }
   });
 });
@@ -160,11 +160,11 @@ export const executeQuery = catchAsync(async (req: AuthenticatedRequest, res: Re
  * @route POST /api/bigquery/schemas
  */
 export const getSchemasFromDatasets = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const connectionId = req.bigQueryConnection?.id;
+  const connectionId = req.sourceConnection?.id;
   const { datasets } = req.body;
   
   if (!connectionId) {
-    throw ApiError.badRequest('BigQuery connection not found');
+    throw ApiError.badRequest('Source connection not found');
   }
   
   // Validate input
@@ -179,7 +179,7 @@ export const getSchemasFromDatasets = catchAsync(async (req: AuthenticatedReques
     status: 'success',
     data: {
       ...schemas,
-      connection: req.bigQueryConnection
+      connection: req.sourceConnection
     }
   });
 });

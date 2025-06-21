@@ -1,9 +1,12 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
+import { eq, and, desc } from 'drizzle-orm';
 import environment from '../config/environment';
 import ApiError from '../utils/ApiError';
 import catchAsync from '../utils/catchAsync';
 import connection from '../config/database';
+import { db } from '../db/connection';
+import { connections } from '../db/schema/connections';
 import { usersTable, userSessionsTable, userAuthTable } from '../config/tableConfig';
 import { AuthenticatedRequest, User, UserSession } from '../types/api';
 
@@ -21,61 +24,105 @@ import { AuthenticatedRequest, User, UserSession } from '../types/api';
 // };
 
 /**
- * Middleware to check JWT and session tokens
+ * Enhanced middleware to check JWT tokens with optional tenant and source connection lookup
  */
-export const checkAuthToken = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  // Extract tokens from headers
-  const authHeader = req.headers.authorization;
-  const sessionToken = req.headers['session-token'] as string;
-  const token = authHeader && authHeader.split(' ')[1];
+export const checkAuthToken = (options: {
+  requireTenant?: boolean;
+  requireSource?: boolean;
+} = {}) => {
+  const { requireTenant = false, requireSource = false } = options;
 
-  if (!token) {
-    throw ApiError.unauthorized('Missing required tokens');
-  }
+  return catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    // Step 1: Extract and verify JWT token
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
 
-  try {
-    // Verify JWT token
-    const decoded = jwt.verify(token, environment.JWT_SECRET_KEY) as any;
-
-    // Get user record
-    const userQuery = `SELECT * FROM ${usersTable.schemaTableName} WHERE ${usersTable.id} = $1`;
-    const userResult = await connection.query(userQuery, [decoded.id]);
-
-
-
-    if (userResult.rows.length === 0) {
-      throw ApiError.forbidden('Invalid user');
+    if (!token) {
+      throw ApiError.unauthorized('Missing required tokens');
     }
 
-    const userRecord: User = userResult.rows[0];
+    try {
+      // Verify JWT token
+      const decoded = jwt.verify(token, environment.JWT_SECRET_KEY) as any;
 
-    // const sourceConnectionQuery = `SELECT * FROM dev.connections WHERE  organisation_id = '${userRecord.organisation_id}'
+      // Get user record
+      const userQuery = `SELECT * FROM ${usersTable.schemaTableName} WHERE ${usersTable.id} = $1`;
+      const userResult = await connection.query(userQuery, [decoded.id]);
 
-    // Validate session
-    // const sessionQuery = `
-    //   SELECT * FROM ${userSessionsTable.schemaTableName}
-    //   WHERE ${userSessionsTable.user_id} = $1 
-    //   AND ${userSessionsTable.session_token} = $2
-    //   AND ${userSessionsTable.is_valid} = true
-    //   AND ${userSessionsTable.expires_at} > CURRENT_TIMESTAMP
-    // `;
+      if (userResult.rows.length === 0) {
+        throw ApiError.forbidden('Invalid user');
+      }
 
-    // const sessionResult = await connection.query(sessionQuery, [userRecord.id, sessionToken]);
+      const userRecord: User = userResult.rows[0];
 
-    // if (sessionResult.rows.length === 0) {
-    //   throw ApiError.unauthorized('Invalid or expired session');
-    // }
+      // Attach user information to request
+      req.user = userRecord;
 
-    // Attach user information to request
-    req.user = userRecord;
-    next();
-  } catch (error) {
-    if (error instanceof ApiError) {
-      return next(error);
+      // Step 2: Handle tenant validation (if required)
+      if (requireTenant || requireSource) {
+        const organisationId = userRecord.organisation_id;
+        
+        if (!organisationId) {
+          throw ApiError.badRequest('User organisation ID is required');
+        }
+
+        // Set tenant ID from user's organisation
+        req.tenantId = organisationId;
+      }
+
+      // Step 3: Handle source connection lookup (if required)
+      if (requireSource) {
+        const organisationId = req.tenantId!;
+
+        console.log('Looking up source connection for organisation:', organisationId);
+
+        // Query to find active source connection for this organisation using Drizzle
+        const connectionRecords = await db
+          .select({
+            id: connections.id,
+            name: connections.name,
+            type: connections.type,
+            status: connections.status
+          })
+          .from(connections)
+          .where(
+            and(
+              eq(connections.organisationId, organisationId),
+              eq(connections.status, 'connected')
+            )
+          )
+          .orderBy(desc(connections.createdAt))
+          .limit(1);
+
+        console.log('Found source connections:', connectionRecords);
+
+        if (connectionRecords.length === 0) {
+          throw ApiError.notFound('No active source connection found for this organisation. Please create a data source connection first.');
+        }
+
+        const connectionRecord = connectionRecords[0];
+
+        // Add source connection info to request object
+        req.sourceConnection = {
+          id: connectionRecord.id,
+          name: connectionRecord.name,
+          type: connectionRecord.type,
+          status: connectionRecord.status
+        };
+
+        console.log('Source connection found:', req.sourceConnection);
+      }
+
+      next();
+    } catch (error) {
+      console.error('Error in checkAuthToken:', error);
+      if (error instanceof ApiError) {
+        return next(error);
+      }
+      return next(ApiError.forbidden('Authentication failed'));
     }
-    return next(ApiError.forbidden('Authentication failed'));
-  }
-});
+  });
+};
 
 /**
  * Middleware to get or generate API key for user
@@ -210,24 +257,3 @@ export const getClientIP = (req: Request): string => {
     defaultIP
   ) as string;
 };
-
-/**
- * Middleware to validate tenant ID from headers
- */
-export const validateTenant = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  const tenantId = req.headers['x-tenant-id'] as string;
-  
-  if (!tenantId) {
-    throw ApiError.badRequest('Tenant ID is required in x-tenant-id header');
-  }
-  
-  // If user is authenticated, check if user belongs to the tenant
-  if (req.user && req.user.organisation_id !== tenantId && !req.user.is_super_admin) {
-    throw ApiError.forbidden('Access denied for this tenant');
-  }
-  
-  // Add tenant ID to request for easy access
-  req.tenantId = tenantId;
-  
-  next();
-});

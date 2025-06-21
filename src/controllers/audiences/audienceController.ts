@@ -332,10 +332,10 @@ export const previewCohortData = catchAsync(
     const { id } = req.params;
     const { limit = 100 } = req.query;
 
-    // Get connection ID from middleware (this route should use lookupBigQueryConnection middleware)
-    const connectionId = req.bigQueryConnection?.id;
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
     if (!connectionId) {
-      throw new ApiError(400, "BigQuery connection not found");
+      throw new ApiError(400, "Source connection not found");
     }
 
     const data = await cohortService.previewCohortData(
@@ -477,10 +477,10 @@ export const getFieldDistinctValues = catchAsync(
       throw new ApiError(400, "objectId and fieldName are required");
     }
 
-    // Get connection ID from middleware (this route should use lookupBigQueryConnection middleware)
-    const connectionId = req.bigQueryConnection?.id;
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
     if (!connectionId) {
-      throw new ApiError(400, "BigQuery connection not found");
+      throw new ApiError(400, "Source connection not found");
     }
 
     const values = await audienceService.getFilterValuesForAudienceField(
@@ -532,10 +532,10 @@ export const getFilterCounts = catchAsync(
       );
     }
 
-    // Get connection ID from middleware (this route should use lookupBigQueryConnection middleware)
-    const connectionId = req.bigQueryConnection?.id;
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
     if (!connectionId) {
-      throw new ApiError(400, "BigQuery connection not found");
+      throw new ApiError(400, "Source connection not found");
     }
 
     const filters = {
@@ -567,10 +567,10 @@ export const getFilterPreveiwData = catchAsync(
       );
     }
 
-    // Get connection ID from middleware (this route should use lookupBigQueryConnection middleware)
-    const connectionId = req.bigQueryConnection?.id;
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
     if (!connectionId) {
-      throw new ApiError(400, "BigQuery connection not found");
+      throw new ApiError(400, "Source connection not found");
     }
 
     const filters = {
@@ -614,10 +614,10 @@ export const previewFilterData = catchAsync(
       );
     }
 
-    // Get connection ID from middleware (this route should use lookupBigQueryConnection middleware)
-    const connectionId = req.bigQueryConnection?.id;
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
     if (!connectionId) {
-      throw new ApiError(400, "BigQuery connection not found");
+      throw new ApiError(400, "Source connection not found");
     }
 
     const filters = {
@@ -652,10 +652,10 @@ export const getAudienceObjectData = catchAsync(
       throw new ApiError(400, "objectId is required");
     }
 
-    // Get connection ID from middleware (this route should use lookupBigQueryConnection middleware)
-    const connectionId = req.bigQueryConnection?.id;
+    // Get connection ID from middleware (this route should use requireSource: true)
+    const connectionId = req.sourceConnection?.id;
     if (!connectionId) {
-      throw new ApiError(400, "BigQuery connection not found");
+      throw new ApiError(400, "Source connection not found");
     }
 
     const data = await audienceService.getAudienceObjectData(

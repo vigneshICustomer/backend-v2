@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { checkAuthToken, validateTenant } from "../middleware/auth";
-import { lookupBigQueryConnection } from "../middleware/connectionLookup";
+import { checkAuthToken } from "../middleware/auth";
 import {
   // Audience endpoints
   createAudience,
@@ -44,59 +43,54 @@ import {
 
 const router = Router();
 
-// Apply tenant validation middleware to all routes except health check
-router.use("/audiences", checkAuthToken);
-router.use("/cohorts", checkAuthToken);
-router.use("/objects", checkAuthToken);
-
-// Health check
+// Health check (no auth required)
 router.get("/audiences/health", healthCheck);
 
-// Audience routes
-router.post("/audiences", createAudience);
-router.get("/audiences/:id", getAudienceById);
-router.get("/audiences/:id/details", getAudienceWithDetails);
-router.get("/audiences", getAudiencesList);
-router.put("/audiences/:id", updateAudience);
-router.delete("/audiences/:id", deleteAudience);
+// Audience routes (require tenant validation)
+router.post("/audiences", checkAuthToken({ requireTenant: true }), createAudience);
+router.get("/audiences/:id", checkAuthToken({ requireTenant: true }), getAudienceById);
+router.get("/audiences/:id/details", checkAuthToken({ requireTenant: true }), getAudienceWithDetails);
+router.get("/audiences", checkAuthToken({ requireTenant: true }), getAudiencesList);
+router.put("/audiences/:id", checkAuthToken({ requireTenant: true }), updateAudience);
+router.delete("/audiences/:id", checkAuthToken({ requireTenant: true }), deleteAudience);
 
-// Cohort routes
-router.post("/cohorts", createCohort);
-router.get("/cohorts/:id", getCohortById);
-router.get("/cohorts/:id/details", getCohortWithAudience);
-router.get("/cohorts", getCohortsByTenant); // Can be filtered by audienceId or tenantId
-router.put("/cohorts/:id", updateCohort);
-router.delete("/cohorts/:id", deleteCohort);
+// Cohort routes (require tenant validation)
+router.post("/cohorts", checkAuthToken({ requireTenant: true }), createCohort);
+router.get("/cohorts/:id", checkAuthToken({ requireTenant: true }), getCohortById);
+router.get("/cohorts/:id/details", checkAuthToken({ requireTenant: true }), getCohortWithAudience);
+router.get("/cohorts", checkAuthToken({ requireTenant: true }), getCohortsByTenant);
+router.put("/cohorts/:id", checkAuthToken({ requireTenant: true }), updateCohort);
+router.delete("/cohorts/:id", checkAuthToken({ requireTenant: true }), deleteCohort);
 
-// Cohort data routes (require BigQuery connection)
-router.get("/cohorts/:id/preview", lookupBigQueryConnection, previewCohortData);
+// Cohort data routes (require source connection)
+router.get("/cohorts/:id/preview", checkAuthToken({ requireSource: true }), previewCohortData);
 // router.get('/cohorts/:id/counts', getCohortCounts);
-router.get("/cohorts/:id/download", downloadCohortData);
-router.get("/cohorts/:id/sql", generateCohortSQL);
+router.get("/cohorts/:id/download", checkAuthToken({ requireTenant: true }), downloadCohortData);
+router.get("/cohorts/:id/sql", checkAuthToken({ requireTenant: true }), generateCohortSQL);
 
 // Alternative cohort routes by audience
-router.get("/audiences/:audienceId/cohorts", getCohortsByAudience);
+router.get("/audiences/:audienceId/cohorts", checkAuthToken({ requireTenant: true }), getCohortsByAudience);
 
-// Real-time filter endpoints (require BigQuery connection)
-router.post("/filters/counts", lookupBigQueryConnection, getFilterCounts);
-router.post("/filters/preview", lookupBigQueryConnection, previewFilterData);
-router.post("/filters/get-preview", lookupBigQueryConnection, getFilterPreveiwData);
+// Real-time filter endpoints (require source connection)
+router.post("/filters/counts", checkAuthToken({ requireSource: true }), getFilterCounts);
+router.post("/filters/preview", checkAuthToken({ requireSource: true }), previewFilterData);
+router.post("/filters/get-preview", checkAuthToken({ requireSource: true }), getFilterPreveiwData);
 
-// Utility routes
-router.get("/objects", getAllObjects);
-router.get("/relationships", getAllRelationships);
+// Utility routes (require tenant validation)
+router.get("/objects", checkAuthToken({ requireTenant: true }), getAllObjects);
+router.get("/relationships", checkAuthToken({ requireTenant: true }), getAllRelationships);
 
 // Field configuration routes
-router.get("/objects/:objectId/fields", getObjectFields);
-router.get("/objects/:objectId/display-fields", getObjectDisplayFields);
+router.get("/objects/:objectId/fields", checkAuthToken({ requireTenant: true }), getObjectFields);
+router.get("/objects/:objectId/display-fields", checkAuthToken({ requireTenant: true }), getObjectDisplayFields);
 router.get(
   "/objects/:objectId/fields/:fieldName/values",
-  lookupBigQueryConnection,
+  checkAuthToken({ requireSource: true }),
   getFieldDistinctValues
 );
-router.put("/objects/:objectId/fields", updateObjectFields);
+router.put("/objects/:objectId/fields", checkAuthToken({ requireTenant: true }), updateObjectFields);
 
-// Audience data routes (require BigQuery connection)
-router.get("/audiences/:id/objects/:objectId/data", lookupBigQueryConnection, getAudienceObjectData);
+// Audience data routes (require source connection)
+router.get("/audiences/:id/objects/:objectId/data", checkAuthToken({ requireSource: true }), getAudienceObjectData);
 
 export default router;
